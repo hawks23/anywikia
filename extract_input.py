@@ -14,7 +14,6 @@ load_dotenv(Path(__file__).with_name('.env'))
 from pydantic import BaseModel, Field
 from typing import List
 
-
 class Entity(BaseModel):
     subject: str = Field(
         description="The entity, person, organization, product, concept, or subject being described."
@@ -30,8 +29,6 @@ class EntityList(BaseModel):
     items: List[Entity] = Field(
         description="A list of factual relationships extracted from the given text."
     )
-
-
 
 
 def structured_completion(messages, schema=EntityList):

@@ -1,4 +1,5 @@
 import requests
+import json
 WIKIDATA_API = "https://www.wikidata.org/w/api.php"
 
 def search_wikidata(query: str, search_type: str = "item", limit: int = 5):
@@ -31,7 +32,10 @@ def search_wikidata(query: str, search_type: str = "item", limit: int = 5):
     )
     response.raise_for_status()
 
-    results = response.json().get("search", [])
+    data = response.json()
+    if "error" in data:
+        raise RuntimeError(f"Wikidata API error: {data['error']}")
+    results = data.get("search", [])
 
     return [
         {
@@ -43,6 +47,39 @@ def search_wikidata(query: str, search_type: str = "item", limit: int = 5):
     ]
 
 
-# Example usage
-print(search_wikidata("Finn Aarup Nielsen", "item"))
-print(search_wikidata("author", "property"))
+def extract_ids(triple: dict) -> dict:
+    """Resolve Wikidata IDs while preserving the input names and value.
+
+    Raises ValueError when a lookup has no matches. Ambiguous names use
+    Wikidata's search ranking and may require caller review.
+    """
+    for field in ("subject", "property", "value"):
+        if field not in triple:
+            raise ValueError(f"Missing required field: {field}")
+    for field in ("subject", "property"):
+        if not isinstance(triple[field], str) or not triple[field].strip():
+            raise ValueError(f"{field} must be a non-empty string")
+
+    resolved = {}
+    for field, search_type in (("subject", "item"), ("property", "property")):
+        matches = search_wikidata(triple[field], search_type, limit=1)
+        if not matches:
+            raise ValueError(f"No Wikidata {search_type} found for {triple[field]!r}")
+        resolved[field] = matches[0]["id"]
+
+    return {
+        "subjectName": triple["subject"],
+        "subject": resolved["subject"],
+        "propertyName": triple["property"],
+        "property": resolved["property"],
+        "value": triple["value"]
+    }
+
+
+if __name__ == "__main__":
+    triple = {
+        "subject": "A100 Blackwell GPU",
+        "property": "wider availability date",
+        "value": "2026-11-17"
+    }
+    print(json.dumps(extract_ids(triple), indent=2))

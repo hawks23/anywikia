@@ -18,16 +18,14 @@ def main():
 
             The A100 introduced third-generation Tensor cores and the TF32 precision format, which sped up AI math without code changes, and it was the first NVIDIA GPU to support Multi-Instance GPU (MIG), which splits one physical card into isolated slices. In 2026 the A100 is no longer NVIDIA's fastest chip, but its mature software stack and wide availability keep it in active service for teams that do not need frontier-scale performance.
     """
-    json_of_triples = extract_entities(inp)
+    json_of_triples = json.dumps(extract_entities(inp)) # The whole list of every extracted entity
+
+    
 
     #printing
-    print(json.dumps(
-    json_of_triples,
-    indent=4,
-    ensure_ascii=False
-))
-    # print(type(json_of_triples))
-    # triples = search_wikidata(json_of_triples)
+    print(json_of_triples)
+
+        # triples = search_wikidata(json_of_triples)
 
 
 if __name__ == "__main__":

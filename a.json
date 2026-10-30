@@ -1,0 +1,119 @@
+{
+    "items": [
+        {
+            "subject": "NVIDIA A100",
+            "property": "type",
+            "value": "data-center GPU"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "architecture",
+            "value": "Ampere architecture"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "launch date",
+            "value": "May 2020"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "CUDA cores count",
+            "value": "6,912"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "Tensor cores count",
+            "value": "432"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "high-bandwidth memory capacity",
+            "value": "40GB or 80GB"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "maximum bandwidth",
+            "value": "2,039 GB/s"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "TFLOPS dense FP16",
+            "value": "312 TFLOPS"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "memory variants",
+            "value": "40GB and 80GB"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "form factor",
+            "value": "PCIe or SXM"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "introduced",
+            "value": "third-generation Tensor cores"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "introduced",
+            "value": "TF32 precision format"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "first to support",
+            "value": "Multi-Instance GPU (MIG)"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "replaced",
+            "value": "V100 (Volta)"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "succeeded by",
+            "value": "H100 (Hopper)"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "generation relative to",
+            "value": "Two generations behind Blackwell chips (B300/B200)"
+        },
+        {
+            "subject": "H100",
+            "property": "relative transformer throughput to NVIDIA A100",
+            "value": "3 to 4 times"
+        },
+        {
+            "subject": "NVIDIA A100",
+            "property": "main use cases in 2026",
+            "value": "AI inference, fine-tuning, and mid-scale training"
+        },
+        {
+            "subject": "80GB A100",
+            "property": "release date",
+            "value": "November 2020"
+        },
+        {
+            "subject": "80GB A100",
+            "property": "available on",
+            "value": "Akash marketplace"
+        },
+        {
+            "subject": "80GB A100",
+            "property": "starting rate on Akash",
+            "value": "$1.07/GPU-hr"
+        },
+        {
+            "subject": "80GB A100",
+            "property": "average rate on Akash",
+            "value": "$1.49/GPU-hr"
+        },
+        {
+            "subject": "80GB A100",
+            "property": "top asking rate on Akash",
+            "value": "$1.91/GPU-hr"
+        }
+    ]
+}
