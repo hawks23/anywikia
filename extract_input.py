@@ -1,4 +1,4 @@
-"""LLM extraction and grounded query drafting through CampusAI."""
+"""Extract musical keyboard facts through the CampusAI structured completion API."""
 import argparse
 import json
 import os
@@ -15,19 +15,23 @@ from pydantic import BaseModel, Field
 from typing import List
 
 class Entity(BaseModel):
+    """One candidate fact with a keyboard subject and a source-grounded value."""
+
     subject: str = Field(
-        description="The entity, person, organization, product, concept, or subject being described."
+        description="Full name of the musical keyboard instrument or model described in the source, suitable for Wikidata item lookup."
     )
     property: str = Field(
-        description="The property or relationship being expressed. Use a concise, normalized predicate, preferably in natural language."
+        description="English Wikidata property label for the stated keyboard fact, such as manufacturer, instance of, or mass."
     )
     value: str = Field(
-        description="The value associated with the property. This can be another entity, a number, a date, a description, or any other factual value."
+        description="Value stated for this instrument. Preserve entity names, model designations, date precision, and measurement units as text."
     )
 
 class EntityList(BaseModel):
+    """Structured completion schema allowing zero or more keyboard facts."""
+
     items: List[Entity] = Field(
-        description="A list of factual relationships extracted from the given text."
+        description="One triple per supported fact about a named musical keyboard. Return an empty list if there are none."
     )
 
 
@@ -67,96 +71,32 @@ def structured_completion(messages, schema=EntityList):
 
 
 def extract_entities(text: str) -> dict:
-    """Extract lookup phrases from English or Danish, translating properties."""
+    """Extract Wikidata candidate statements about musical keyboard instruments."""
     result = structured_completion([
-        {'role': 'system', 'content': (
-"""
-        # Role: Knowledge Base Fact Extractor
+        {'role': 'system', 'content': """
+Extract facts about named musical keyboard instruments or models from English or Danish text.
+This includes digital pianos, organs and synthesizers with keyboards. Exclude computer keyboards,
+accessories and synthesizer modules without keys. In mixed text, keep only keyboard instrument facts.
 
-        You are a factual information extraction engine. Your task is to extract structured facts from the input text for storage in a knowledge base.
+Return one subject-property-value triple per explicitly supported statement. Use the instrument's
+full name consistently as the subject. A manufacturer or instrument class can be a value.
+Keep model variants distinct and resolve pronouns only when their referent is clear.
 
-        You must extract ONLY information explicitly stated or unambiguously implied by the input.
+Use human-readable English Wikidata property labels suitable for lookup, such as "instance of",
+"manufacturer", "country of origin", "mass" or "width". Capture keyboard specifications such as
+key count when a Wikidata property expresses that precise fact. Skip facts without a matching
+property. Avoid guessing properties, QIDs, PIDs or facts from general knowledge.
+Preserve values as stated, including names, units and the precision of dates and measurements.
 
-        ## 1. Output Structure
+Example input: "Yamaha manufactured the Yamaha DX7. The manual also lists a computer keyboard."
+Example output: {"items": [{"subject": "Yamaha DX7", "property": "manufacturer", "value": "Yamaha"}]}
 
-        Extract information as a collection of atomic subject-property-value triples:
-
-        - **subject:** The actual entity being described (e.g., person, organization, product, technology, location).
-        - **property:** A property or relationship associated with the subject.
-        - **value:** The corresponding factual value.
-
-        ## 2. Extraction Rules
-
-        1. Extract facts ONLY from the provided input. Never generate new information.
-        2. Each record must represent exactly ONE factual relationship.
-        3. Subjects must be actual entities mentioned in the text. Never create artificial subjects such as "Pricing", "Product Launch", "Conference Announcement", or "Availability Phase".
-        4. Reuse the same subject across multiple records when describing different properties of that entity.
-        5. Extract relationships between entities. For example, if a company releases a product, represent the company and product as separate entities connected by a relationship.
-        6. Extract attributes such as price, date, location, manufacturer, creator, and other relevant properties.
-        7. Use human-readable Wikidata-style property labels (e.g., "manufacturer", "publication date", "country of origin"). Prefer existing Wikidata property labels when semantically appropriate. Do not use snake_case.
-        8. Preserve numerical values, currencies, dates, measurements, and units.
-        9. Resolve pronouns using context when unambiguous.
-        10. Do not infer facts from general knowledge or assumptions.
-        11. Do not generate summaries, descriptions, announcements, emails, social media posts, recommendations, or other content.
-        12. Do not treat writing styles, formatting instructions, headings, or document classifications as factual relationships.
-        13. If the input contains no extractable facts, return an empty list.
-
-        ## 3. Example
-
-        Input:
-
-        "Nvidia just released their new product, A100 Blackwell GPU, for 1200 USD per piece. It will initially be available only in California for the first two weeks, before becoming available everywhere else on November 17, 2026."
-
-        Output:
-
-        {
-        "items": [
-            {
-            "subject": "Nvidia",
-            "property": "product",
-            "value": "A100 Blackwell GPU"
-            },
-            {
-            "subject": "A100 Blackwell GPU",
-            "property": "price",
-            "value": "1200 USD per piece"
-            },
-            {
-            "subject": "A100 Blackwell GPU",
-            "property": "available in",
-            "value": "California"
-            },
-            {
-            "subject": "A100 Blackwell GPU",
-            "property": "availability duration",
-            "value": "First two weeks"
-            },
-            {
-            "subject": "A100 Blackwell GPU",
-            "property": "wider availability region",
-            "value": "Everywhere else"
-            },
-            {
-            "subject": "A100 Blackwell GPU",
-            "property": "wider availability date",
-            "value": "2026-11-17"
-            }
-        ]
-        }
-
-        ## 4. Final Instructions
-
-        Think of yourself as a database ingestion component, NOT a conversational assistant or content-generation model.
-
-        Your only responsibility is to identify factual relationships and return them in the requested structured schema.
-
-        Return ONLY the structured output. Never add explanations, interpretations, suggestions, or generated content.
-"""
-        )},
+Return only the structured output. If there are no qualifying facts, return {"items": []}.
+"""},
         {'role': 'user', 'content': text},
     ], EntityList)
     return result.model_dump()
 
 if __name__ == '__main__':
-    out = extract_entities("Professor Finn Aarup Nielsen just released his new paper titled 'Advancements in NLP using Jev'. The paper will be published at the 'NLP Consortium Event (NCE 2026)'.")
+    out = extract_entities("Yamaha manufactured the Yamaha DX7 synthesizer.")
     print(out)

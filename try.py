@@ -1,5 +1,4 @@
-
-
+"""Experimental SPARQL helpers requiring an external logger, HTTP client and endpoint."""
 def simplify_bindings(bindings: list[dict]) -> list[dict]:
     """Convert SPARQL bindings into dictionaries containing plain values."""
     simplified = []
