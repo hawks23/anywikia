@@ -4,9 +4,22 @@ Anywikia aims to extract evidence-backed facts from text, compare them with a
 knowledge base, and prepare missing information for human review and addition.
 The initial domain is musical keyboards and synthesizers.
 
-**Current status:** extraction and public Wikidata resolution are connected.
-Local RDF querying works separately. Local resolution is not yet connected to
-the extractor, and automatic comparison, review, and population are not implemented.
+**Current status:** CampusAI extracts subject, property, value, unit, and exact
+source evidence. Local QLever resolution attaches Keyboards Wikibase IDs without
+replacing source values. Automatic comparison, approval, and population are not implemented.
+
+```bash
+.venv/bin/python start_qlever.py
+.venv/bin/python app.py "The Yamaha P-150 has a width of 1385 mm."
+# Add --json for structured output. Offline regression checks:
+.venv/bin/python -m unittest -v test_extraction_pipeline
+```
+
+The display separates Subject, Property, Value, Unit, Evidence, and local IDs.
+Units remain as written (no conversion); absent units are null. Evidence must
+occur verbatim in the input; this check does not prove the quote supports the claim.
+Unknown or ambiguous names retain their extracted facts with unresolved IDs and
+review warnings. Entity-valued properties also resolve the value name to a local QID.
 
 ## Prerequisites and fresh-clone setup
 
@@ -50,12 +63,16 @@ Put CAMPUSAI_API_KEY and CAMPUSAI_MODEL in the adjacent .env file. Optional sett
 
 ## How the files work
 
-- **app.py** passes the passage to the extractor, prints its JSON and sends each triple to the resolver in order. The second JSON output contains successfully resolved records. Diagnostics go to standard error.
+- **app.py** extracts from a passage argument (or the sample), attaches local IDs, and prints review fields. Use `--json` for structured records. Local service failures retain the extracted facts with warnings.
 - **extract_input.py** defines the Entity and EntityList schemas. structured_completion sends messages and the schema to CampusAI and checks for refusals or missing output. extract_entities supplies the musical keyboard prompt and returns a dictionary containing an items list.
-- **extract_id.py** searches English Wikidata labels using search_wikidata. extract_ids validates one triple and selects the first item match for its subject and the first property match for its predicate. The output includes subjectName, subject (QID), propertyName, property (PID) and the original value. A first-ranked match can be ambiguous.
-- **try.py** contains experimental SPARQL helpers configured for local QLever, including label/alias lookup and ID parsing. The extraction app still uses the Wikidata search API directly.
+- **resolve_local.py** searches local English/Danish labels and aliases, case-insensitively. Only a unique exact match is assigned. Source values, units, and quotations remain unchanged.
+- **extract_id.py** is the legacy public Wikidata resolver, no longer used by `app.py`.
+- **try.py** contains separate experimental SPARQL helpers configured for local QLever, including label/alias lookup and ID parsing. The extraction app uses `resolve_local.py` instead.
 
-## Timing and incomplete results
+## Legacy public resolver: timing and incomplete results
+
+This section describes `extract_id.py`, which is retained for reference and is
+not called by the current extraction pipeline.
 
 Each Wikidata request waits one second before sending and has a 15-second network timeout. On HTTP 429 the resolver honors Retry-After with a one-second minimum. When the header is absent, it waits two seconds and then four seconds. Each lookup gets at most three attempts. The resolver caches up to 512 distinct label/type lookups per process, including searches that returned no match.
 
@@ -116,9 +133,10 @@ cd ..
 For LLM extraction, copy `.env.example` to `.env` and fill in the credentials.
 The local RDF query test does not require credentials.
 
-`test.py` and the experimental `try.py` helpers query local RDF. `app.py` still
-uses CampusAI and the public Wikidata resolver; relocating data does not implement
-that planned migration. `.env` remains private and excluded from Git.
+`test.py` and the experimental `try.py` helpers query local RDF. `app.py` uses
+CampusAI for extraction and `resolve_local.py` for IDs from local QLever on port
+7071. It does not fetch existing fact values to populate extracted claims.
+`.env` remains private and excluded from Git.
 See `limitations.md` for the PoC follow-up checklist.
 
 ## What the local test proves
