@@ -1,0 +1,8 @@
+cd ~/anywikia
+source .venv/bin/activate
+python start_qlever.py
+python test.py
+
+RDF and QLever files: ~/anywikia/keyboards-index
+Endpoint: http://127.0.0.1:7071
+Stop: docker stop qlever.server.anywikia

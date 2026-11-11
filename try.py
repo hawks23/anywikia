@@ -1,4 +1,12 @@
-"""Experimental SPARQL helpers requiring an external logger, HTTP client and endpoint."""
+"""Experimental SPARQL helpers for the local Keyboards QLever endpoint."""
+import logging
+
+import httpx as httpx2
+from rdflib import Literal
+
+from local_rdf import SPARQL_ENDPOINT
+
+logger = logging.getLogger(__name__)
 def simplify_bindings(bindings: list[dict]) -> list[dict]:
     """Convert SPARQL bindings into dictionaries containing plain values."""
     simplified = []
@@ -14,7 +22,8 @@ def run_sparql(query: str) -> list[dict]:
     """Execute a SPARQL query and return its simplified result bindings."""
     logger.debug(f"Running SPARQL query: {query}")
     with httpx2.Client(timeout=20) as client:
-        r = client.get(SPARQL_ENDPOINT, params={"query": query, "format": "json"})
+        r = client.post(SPARQL_ENDPOINT, data={"query": query},
+                        headers={"Accept": "application/sparql-results+json"})
         r.raise_for_status()
         logger.debug(f"SPARQL response: {r.json()}")
         bindings = r.json()["results"]["bindings"]
@@ -45,7 +54,8 @@ def lookup_item(text: str) -> str:
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
         SELECT ?item {{
-            ?item rdfs:label | skos:altLabel "{text}"@en
+            ?item rdfs:label | skos:altLabel {Literal(text, lang="en").n3()}
+            FILTER(STRSTARTS(STR(?item), "https://keyboards.wikibase.cloud/entity/Q"))
         }}
     """
     results = run_sparql(sparql)
@@ -64,7 +74,7 @@ def lookup_property(text: str) -> str:
         PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
         PREFIX wikibase: <http://wikiba.se/ontology#>
         SELECT ?property {{
-            ?property_item rdfs:label | skos:altLabel "{text}"@en ;
+            ?property_item rdfs:label | skos:altLabel {Literal(text, lang="en").n3()} ;
         wikibase:directClaim ?property .
     }}"""
     results = run_sparql(sparql)

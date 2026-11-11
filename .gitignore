@@ -61,3 +61,21 @@ generated/
 *.pem
 *.key
 credentials.json
+
+# Generated QLever index and runtime files
+keyboards.index.*
+keyboards.internal.index.*
+keyboards.vocabulary.*
+keyboards.meta-data.json
+keyboards.*log*
+*.pid
+
+# Additional local runtime artifacts
+.ruff_cache/
+.mypy_cache/
+.coverage.*
+*.sqlite3-*
+*.db-*
+*:Zone.Identifier
+keyboards-index/previous.*/
+keyboards-index/*.update-log*
