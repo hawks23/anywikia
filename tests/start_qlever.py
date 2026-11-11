@@ -1,13 +1,19 @@
 """Start QLever using keyboards-index, independently of the working directory."""
-import json
-from pathlib import Path
-import subprocess
+# Support direct execution from tests/ as well as unittest discovery.
 import sys
+from pathlib import Path
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+
+import json
+import subprocess
 import time
 
 import httpx
 
 from local_rdf import INDEX_DIR, SPARQL_ENDPOINT
+from functions.qlever_checks import check_server
 
 
 def main():
@@ -36,13 +42,8 @@ def main():
         subprocess.run([str(qlever), "start"], cwd=INDEX_DIR, check=True)
     for _ in range(30):
         try:
-            response = httpx.post(SPARQL_ENDPOINT,
-                                  data={"query": "SELECT ?s WHERE { ?s ?p ?o } LIMIT 1"},
-                                  headers={"Accept": "application/sparql-results+json"},
-                                  timeout=2)
-            response.raise_for_status()
-            if "results" in response.json():
-                break
+            check_server()
+            break
         except (httpx.HTTPError, ValueError):
             pass
         time.sleep(0.5)
