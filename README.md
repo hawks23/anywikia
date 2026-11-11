@@ -1,9 +1,48 @@
-# Musical keyboard fact extraction
+# Anywikia: musical keyboard fact extraction
+
+Anywikia aims to extract evidence-backed facts from text, compare them with a
+knowledge base, and prepare missing information for human review and addition.
+The initial domain is musical keyboards and synthesizers.
+
+**Current status:** extraction and public Wikidata resolution are connected.
+Local RDF querying works separately. Local resolution is not yet connected to
+the extractor, and automatic comparison, review, and population are not implemented.
+
+## Prerequisites and fresh-clone setup
+
+The local setup was verified in Ubuntu-22.04 under WSL2 with Python 3.13.
+Install Git, Python with virtual-environment support (or uv), and Docker Desktop.
+Enable Docker Desktop's WSL integration for Ubuntu and wait for its engine to
+start before running QLever. CampusAI credentials are needed only for extraction.
+
+Run in an Ubuntu/WSL terminal:
+
+```bash
+git clone https://github.com/hawks23/anywikia.git
+cd anywikia
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.lock.txt
+cd keyboards-index
+../.venv/bin/qlever index
+cd ..
+python start_qlever.py
+python test.py
+```
+
+Alternatively, create the environment using `uv venv --python 3.13 .venv`, then
+install with `uv pip install --python .venv/bin/python -r requirements.lock.txt`.
+The RDF snapshot is committed; generated indexes are excluded and must be built
+on a fresh clone. Existing installations can reuse their index.
+
+## Run extraction
 
 Run the following from this directory with the project virtual environment active.
 
-```powershell
-python -m pip install openai pydantic python-dotenv requests
+```bash
+# First installation only; preserve an existing .env:
+cp .env.example .env
+# Edit .env and supply your CampusAI credentials before running:
 python app.py
 ```
 
@@ -81,3 +120,153 @@ The local RDF query test does not require credentials.
 uses CampusAI and the public Wikidata resolver; relocating data does not implement
 that planned migration. `.env` remains private and excluded from Git.
 See `limitations.md` for the PoC follow-up checklist.
+
+## What the local test proves
+
+`test.py` sends a read-only SPARQL query to QLever for Yamaha P-150 (`Q1`),
+its English label, width (`P2`), and height (`P4`). Expected values are
+**1385 mm wide and 159 mm high**. The snapshot contains **6,888 triples**.
+
+The test does not call CampusAI or public Wikidata, extract new facts, or modify
+data. It is a query demonstration, not a full application test suite.
+Use `python test.py --endpoint http://127.0.0.1:7071` to specify an endpoint.
+
+## Knowledge needed to continue development
+
+### RDF and graph structure
+
+RDF stores **subject -> predicate -> object** triples:
+
+```text
+Yamaha P-150 -> manufacturer -> Yamaha
+Yamaha P-150 -> width        -> 1385
+```
+
+An object can be another resource or a literal such as text, a number, or a date.
+Subject and object are roles: Yamaha can be an object in one fact and a subject
+in another. `keyboards.nt` uses N-Triples syntax, with full resource identifiers
+and literal language tags or datatypes where applicable.
+
+A graph has no mandatory root or number of levels. Levels are traversal distances
+from a chosen starting point. Cycles are possible, so traversal code should track
+visited nodes and use depth limits where appropriate. No directed cycles were
+found in the inspected snapshot; future data need not have that property.
+
+### Keyboards Wikibase is separate from Wikidata
+
+Local IDs and public Wikidata IDs are different namespaces. A local `Q1` or `P2`
+must not be treated as the same ID on wikidata.org.
+
+| Query prefix | Namespace | Meaning |
+| --- | --- | --- |
+| `kb:` | `https://keyboards.wikibase.cloud/entity/` | Local items and property definitions |
+| `kbt:` | `https://keyboards.wikibase.cloud/prop/direct/` | Direct fact predicates |
+| `rdfs:` | `http://www.w3.org/2000/01/rdf-schema#` | Labels and schema vocabulary |
+| `wikibase:` | `http://wikiba.se/ontology#` | Value types, predicate mappings, and metadata |
+
+These URLs identify graph resources. Using them in a query sent to localhost
+does not fetch those websites.
+
+### Schema and types
+
+The snapshot defines 30 properties. Each property has a label, value type, and
+mappings to RDF predicates. For example:
+
+```text
+kb:P2 -> rdfs:label            -> "width"@en
+kb:P2 -> wikibase:propertyType -> wikibase:Quantity
+kb:P2 -> wikibase:directClaim  -> kbt:P2
+```
+
+Local `P11` means **instance of**: it can classify Yamaha as a manufacturer or
+Japan as a country. Some items lack that classification, so type-based queries
+can omit them. The inspected snapshot has no `rdfs:domain`, `rdfs:range`, or
+`rdfs:subClassOf` triples. Observed property usage is not a required-field schema.
+
+### Direct facts and full statements
+
+Direct predicates are convenient for simple queries:
+
+```sparql
+PREFIX kb: <https://keyboards.wikibase.cloud/entity/>
+PREFIX kbt: <https://keyboards.wikibase.cloud/prop/direct/>
+SELECT ?width WHERE { kb:Q1 kbt:P2 ?width }
+```
+
+Full Wikibase statements also have statement nodes, ranks, and potentially
+qualifiers and references. Quantity value nodes carry units and amounts. A direct
+numeric value alone does not encode its unit. Comparison and export must preserve
+this information rather than treating every fact as three strings.
+
+### Pydantic and extraction
+
+Pydantic validates the shape of extracted data. It does not prove a claim is true,
+correctly linked, or absent from the knowledge base. Represent entity links using
+references rather than recursively nesting the entire graph inside a model.
+Keep extraction, resolution, evidence verification, comparison, and approval as
+separate stages.
+
+## Additional file guide
+
+| File | Purpose |
+| --- | --- |
+| `local_rdf.py` | Shared endpoint and paths derived from the checkout location |
+| `start_qlever.py` | Container mount validation, startup, and readiness check |
+| `test.py` | Local SPARQL query example |
+| `keyboards-index/keyboards.nt` | Versioned source RDF |
+| `keyboards-index/Qleverfile` | Index and server configuration |
+| `keyboards-index/Qleverfile-ui.yml` | Optional UI configuration; the startup helper does not launch the UI |
+| `keyboards-index/keyboards.settings.json` | Supplied index settings |
+| `requirements.lock.txt` | Recorded dependency versions |
+| `.env.example` | Credential-free configuration template |
+| `limitations.md` | PoC limitations and follow-up checklist |
+
+## Planned PoC milestone
+
+Support existing keyboard models and five properties: manufacturer, keys, width,
+height, and weight.
+
+1. Extract typed claims with exact quotations and source locations.
+2. Resolve names and properties locally; preserve ambiguous or unknown matches.
+3. Normalize quantities and units, then retrieve existing statements.
+4. Classify claims as already present, candidate addition, conflict, or unresolved.
+5. Review proposals and export approved additions to a separate RDF file.
+6. Reload a demo graph and verify the facts exist and are not proposed twice.
+
+Evaluate using manually checked examples and a test copy with selected known
+facts removed. Preserve the original snapshot. Evidence supports an extraction
+but does not establish source reliability, and absence locally does not establish
+absence online. See [limitations.md](limitations.md) for further scope limits.
+
+## Troubleshooting and maintenance
+
+- **Docker unavailable or WSL Docker I/O error:** start Docker Desktop, confirm
+  Ubuntu integration, and wait until `docker info` succeeds before retrying.
+- **Index missing:** run `../.venv/bin/qlever index` from `keyboards-index/`.
+- **Container points to an old directory:** inspect it with
+  `docker inspect qlever.server.anywikia`. After confirming it is the old project
+  container, stop and remove that container and rerun `python start_qlever.py`.
+  Moving files does not update an existing Docker bind mount.
+- **Connection refused:** run the startup helper and read
+  `keyboards-index/keyboards.server-log.txt`. This setup uses port 7071, not 7070.
+- **RDF changed:** stop the server, rebuild the index, and restart it. Editing
+  `keyboards.nt` alone does not update the running index.
+- **Unknown local entity:** inspect local labels and aliases; do not substitute
+  a public Wikidata ID into the local namespace.
+
+Only one checkout should use this container name and port at a time.
+
+## Git hygiene
+
+Commit code, source RDF, credential-free configuration, and documentation.
+`.gitignore` excludes `.env`, virtual environments, Python caches, generated
+indexes and vocabularies, logs, PIDs, and local databases. `.env.example` remains
+versioned. Inspect staged changes before pushing: ignore rules do not untrack
+files already committed.
+
+## Background reading
+
+- [Wikibase RDF format](https://www.mediawiki.org/wiki/Wikibase/Indexing/RDF_Dump_Format)
+- [SPARQL query language](https://www.w3.org/TR/sparql11-query/)
+- [QLever quickstart](https://docs.qlever.dev/quickstart/)
+- [Pydantic models](https://docs.pydantic.dev/latest/concepts/models/)
