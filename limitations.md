@@ -28,8 +28,8 @@ This describes the intended scope, not completed functionality.
 
 ## Implementation reminders
 
-- The inspected Anywikia resolver still uses public Wikidata; `test.py` only
-  demonstrates local QLever querying. Replace the resolver with local lookups.
+- The handler now uses local ID resolution. Add existing-statement comparison
+  and reviewed export next. Server checks are in `functions/qlever_checks.py`.
 - Local Keyboards IDs and public Wikidata IDs are different namespaces.
 - Pydantic validates structure, not factual correctness. Keep extraction,
   resolution, evidence checks, comparison, and approval as separate stages.

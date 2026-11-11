@@ -1,8 +1,9 @@
 cd ~/anywikia
 source .venv/bin/activate
-python start_qlever.py
-python test.py
+python tests/start_qlever.py
+python functions/qlever_checks.py
+python handler.py "The Yamaha P-150 has a width of 1385 mm."
 
-RDF and QLever files: ~/anywikia/keyboards-index
-Endpoint: http://127.0.0.1:7071
+Offline tests: python -m unittest discover -s tests -v
+Flowchart: workflow.md
 Stop: docker stop qlever.server.anywikia
