@@ -1,13 +1,20 @@
-"""Extract musical keyboard facts through the CampusAI structured completion API."""
+"""Step 1: extract musical-keyboard facts from source text using CampusAI.
+
+This module owns the Pydantic output models and exact-quotation validation.
+It never queries the RDF. Credentials are loaded from the project root's .env.
+Run this file with a quoted passage to inspect extraction independently.
+"""
+import argparse
+import json
 import os
 from pathlib import Path
 from typing import List
 
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 from pydantic import BaseModel, Field
 
-load_dotenv(Path(__file__).with_name('.env'))
+load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 
 class Entity(BaseModel):
     """One candidate fact with a keyboard subject and a source-grounded value."""
@@ -68,7 +75,13 @@ def structured_completion(messages, schema=EntityList):
 
 
 def extract_entities(text: str) -> dict:
-    """Extract source-grounded candidate statements about musical keyboard instruments."""
+    """Return {'items': [...]} containing source claims, units, and exact quotes.
+
+    Values remain text, units are nullable, and no IDs are guessed. An empty list
+    means no supported facts were extracted. Raises ValueError for invalid quotes
+    or configuration and OpenAIError for upstream API failures. Quote presence
+    is a mechanical check, not a semantic proof that the source supports a claim.
+    """
     result = structured_completion([
         {'role': 'system', 'content': """
 Extract facts about named musical keyboard instruments or models from English or Danish text.
@@ -98,6 +111,16 @@ Return only the structured output. If there are no qualifying facts, return {"it
             raise ValueError("Extraction rejected: evidence is not an exact quote from input.")
     return result.model_dump()
 
-if __name__ == '__main__':
-    out = extract_entities("Yamaha manufactured the Yamaha DX7 synthesizer.")
-    print(out)
+def main():
+    """Extract from one passage without requiring QLever or performing ID lookup."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("text", nargs="?", default="Yamaha manufactured the Yamaha P-150.")
+    args = parser.parse_args()
+    try:
+        print(json.dumps(extract_entities(args.text), indent=2, ensure_ascii=False))
+    except (OpenAIError, ValueError) as error:
+        raise SystemExit(f"Extraction failed: {error}") from error
+
+
+if __name__ == "__main__":
+    main()

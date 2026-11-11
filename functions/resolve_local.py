@@ -1,4 +1,12 @@
 """Attach local IDs to source facts; never retrieve replacement fact values."""
+# Allow both `python functions/module.py` and `python -m functions.module`.
+import sys
+from pathlib import Path
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import argparse
+import json
 import re
 import httpx
 from rdflib import Literal
@@ -7,7 +15,12 @@ from local_rdf import SPARQL_ENDPOINT
 BASE = "https://keyboards.wikibase.cloud/entity/"
 
 
-def search_local(label, kind):
+def search_local(label: str, kind: str) -> list[dict]:
+    """Return exact label/alias candidates, not a guessed best match.
+
+    Searches local English, Danish, and untagged labels case-insensitively.
+    Raises httpx.HTTPError when QLever cannot answer the query.
+    """
     if kind not in ("item", "property"):
         raise ValueError("kind must be item or property")
     prefix = "Q" if kind == "item" else "P"
@@ -34,8 +47,15 @@ SELECT DISTINCT ?entity ?type WHERE {{
     return list(matches.values())
 
 
-def extract_ids(fact):
-    """Preserve source fields and leave absent/ambiguous IDs unresolved."""
+def extract_ids(fact: dict) -> dict:
+    """Attach unique local IDs to a fact without mutating the input dictionary.
+
+    Input has subject/property/value strings plus unit and evidence. Output keeps
+    every source field and adds subject_id, property_id, value_id, knowledge_base,
+    and warnings. Only entity-valued properties trigger value-name resolution.
+    Missing or ambiguous candidates stay unresolved; HTTP errors propagate for
+    the handler to report. Existing database fact values are never retrieved.
+    """
     result = {**fact, "subject_id": None, "property_id": None, "value_id": None,
               "knowledge_base": "https://keyboards.wikibase.cloud", "warnings": []}
 
@@ -54,3 +74,22 @@ def extract_ids(fact):
     if prop and prop["type"] == "http://wikiba.se/ontology#WikibaseItem":
         resolve("value", "item")
     return result
+
+
+def main():
+    """Link a source fact without calling CampusAI; read a JSON fact or use a sample."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--fact-json", help="JSON object with subject, property, value, unit and evidence")
+    args = parser.parse_args()
+    fact = json.loads(args.fact_json) if args.fact_json else {
+        "subject": "Yamaha P-150", "property": "width", "value": "999", "unit": "cm",
+        "evidence": "The Yamaha P-150 has a width of 999 cm."
+    }
+    try:
+        print(json.dumps(extract_ids(fact), indent=2, ensure_ascii=False))
+    except (httpx.HTTPError, ValueError) as error:
+        raise SystemExit(f"Local resolution failed: {error}") from error
+
+
+if __name__ == "__main__":
+    main()
