@@ -10,11 +10,12 @@ flowchart TD
     C --> D[check_dataset: verify Keyboards item and property definitions]
     C -- Failure --> Z[Report error and stop before LLM request]
     D -- Failure --> Z
-    D --> E[extract_entities: CampusAI returns Pydantic facts]
+    D --> E[extract_entities: CampusAI returns typed claims grouped by keyboard and property]
     E --> F[Validate exact evidence quotations against input]
     E -- API or validation failure --> Z
     F -- Invalid quotation --> Z
-    F --> G[For each fact: extract_ids]
+    F --> P[to_claims: create individual records from grouped extraction]
+    P --> G[For each fact: existing extract_ids]
     G --> H[Query local labels and aliases for subject and property]
     H --> I{Property expects an entity value?}
     I -- Yes --> J[Look up the extracted value name]
@@ -31,3 +32,7 @@ The local graph supplies matching IDs, not fact values. Exact quotation presence
 does not prove semantic support. This pipeline does not compare existing values,
 approve claims, or modify RDF. The two server checks are in
 `functions/qlever_checks.py`; every step module can also be executed independently.
+
+The grouped extraction and individual claims are separate in-memory values.
+Extraction-only output is grouped; handler JSON output is a flat list. Improved
+entity matching and duplicate-claim comparison remain planned, not implemented.

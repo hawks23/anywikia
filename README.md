@@ -2,7 +2,8 @@
 
 Extract musical-keyboard facts from source text with CampusAI, attach matching
 local Keyboards Wikibase IDs, and display the results with exact source evidence.
-The local RDF supplies IDs only: it never replaces extracted values or units.
+The local RDF informed the supported property catalog and supplies matching IDs
+at runtime; it never replaces extracted values or units.
 The current pipeline is read-only; comparison, approval, and population remain
 future work. See [workflow.md](workflow.md) for the current flowchart and
 [limitations.md](limitations.md) for follow-up work.
@@ -12,15 +13,18 @@ future work. See [workflow.md](workflow.md) for the current flowchart and
 ```text
 handler.py                      # Main entry point and step orchestration
 functions/
-  extract_input.py              # Pydantic models, LLM extraction, quote validation
+  extract_input.py              # LLM extraction and exact-quote checks
+  pydantic_models.py            # Typed grouped models and conversion to claims
   resolve_local.py              # Unique local QID/PID matching
   qlever_checks.py              # Server and dataset checks
   display_results.py            # Readable or JSON output
+property_list.json              # Catalog of 30 local RDF property definitions
 local_rdf.py                    # Shared endpoint and file paths
 tests/start_qlever.py            # Docker startup and readiness
 keyboards-index/                # RDF, QLever config, generated indexes and logs
 workflow.md                     # Mermaid flowchart
-tests/test_extraction_pipeline.py # Offline regression tests
+tests/test_extraction_pipeline.py # Offline pipeline regression tests
+tests/test_pydantic_models.py    # Typed models and catalog consistency tests
 ```
 
 The old app.py entry point, root extraction/resolution modules, public Wikidata
@@ -79,15 +83,85 @@ The handler calls each step explicitly:
 
 1. check_server confirms that the endpoint executes a minimal SPARQL query.
 2. check_dataset verifies known Keyboards item/property definitions exist.
-3. extract_entities sends the passage to CampusAI and validates exact quotations.
-4. extract_ids attaches unique local IDs to each fact, preserving all source fields.
-5. print_results prints numbered records or machine-readable JSON.
+3. extract_entities sends the passage and the typed model schema to CampusAI,
+   returning claims grouped by keyboard and property with exact quotations.
+4. to_claims creates individual claim records for downstream processing, while
+   the grouped extraction remains a separate in-memory value in the handler.
+5. extract_ids attaches unique local IDs using the existing resolver.
+6. print_results prints individual records or machine-readable JSON.
 
 Preflight failures stop before the LLM request. Extraction errors stop the run.
 If a later lookup fails, the fact is retained with unresolved IDs and a warning.
 Unknown or ambiguous names are not guessed. Source evidence being present does
 not prove it supports the extracted claim. Units are preserved without conversion.
 No source facts are retrieved from the RDF to complete the extraction.
+
+### Extraction schema and output formats
+
+`property_list.json` records 30 properties from the local RDF, including labels,
+descriptions, Wikibase value types, predicate mappings, and observed datatypes and
+units. `functions/pydantic_models.py` defines a curated set of **23 keyboard
+properties** based on that catalog. Offer, seller, price, date, and stored-query
+metadata are outside this extraction model. The model is defined in Python; it
+is not regenerated from the RDF or JSON catalog on each request.
+
+The LLM receives the source passage, extraction instructions, and the Pydantic
+schema with property descriptions. It fills supported fields only. Descriptions
+include our extraction guidance, which is not a constraint declared by the RDF.
+
+| Property kind | Pydantic claim value | Example |
+| --- | --- | --- |
+| Quantity, including counts | Finite `Decimal`, plus nullable source unit | width: 1385, unit: mm |
+| Entity relationship | Name as `str`, pending ID resolution | manufacturer: Yamaha |
+| Text, URL, external ID, media filename | `str` copied from input | explicitly supplied product URL |
+
+Every property is a list of claims with evidence. Unmentioned properties are
+empty lists; repeated or conflicting claims remain separate. Units are copied
+from the source without conversion; an absent unit is `null`. Observed RDF unit
+URIs do not justify inventing a source unit.
+
+Extraction-only output is grouped. This shortened example omits empty fields:
+
+```json
+{
+  "entities": [{
+    "name": "Yamaha P-150",
+    "width": [{
+      "value": "1385",
+      "unit": "mm",
+      "evidence": "The Yamaha P-150 has a width of 1385 mm."
+    }]
+  }]
+}
+```
+
+Decimal values serialize as strings in JSON. The handler converts the grouped
+claims to individual `subject`, `property`, `value`, `unit`, and `evidence`
+records, then attaches IDs and warnings. Property names come from the explicit
+field mapping, not arbitrary names invented by the LLM. The existing resolver
+still looks up the property in QLever. `handler.py --json` prints a **list of
+individual records**, not the grouped extraction or a combined envelope.
+
+### Save and inspect your own results
+
+`--json` prints to standard output; it does not automatically create a file.
+Run these commands in Ubuntu/WSL from the project root:
+
+```bash
+mkdir -p outputs
+# Put your own passage in sample_input.txt first.
+# Grouped extraction only; requires CampusAI credentials.
+python functions/extract_input.py "$(cat sample_input.txt)" > outputs/grouped.json
+python -m json.tool outputs/grouped.json
+
+# Full pipeline; requires CampusAI and running QLever.
+python handler.py "$(cat sample_input.txt)" --json > outputs/claims.json
+python functions/display_results.py outputs/claims.json
+```
+
+These are two independent LLM calls, so the results may differ. The handler does
+not currently accept a saved grouped extraction as CLI input and does not save
+its intermediate extraction automatically. `outputs/` is ignored by Git.
 
 ### Understanding Value and Value QID
 
@@ -173,12 +247,52 @@ Offline tests cover source preservation, ambiguous/missing IDs, entity-valued
 properties, quotation validation, handler step order, preflight failures, failed
 lookups, invalid server responses, and JSON formatting. They mock the LLM and
 network; they do not establish live CampusAI availability or extraction accuracy.
+The 18 tests also check decimal precision, absent units, conflicting claims,
+rejection of invalid quantities/extra fields, supported property mappings against
+the catalog, and local generation of the structured-output schema. Schema
+generation alone does not prove that the configured CampusAI model accepts it.
 Use the standalone server checks for local service verification.
 
-Next: compare existing statements, normalize units for comparison, classify
-missing/duplicate/conflicting claims, and export human-approved additions.
-Evaluate on manually checked inputs and a test copy with known facts removed.
-Do not modify the original snapshot to manufacture a successful demo.
+For a live smoke test, run both QLever checks above, then the extraction-only
+command, then the handler on the same passage. Check the subject, property, value,
+unit, and quoted evidence yourself. For the sample, expect width 1385 mm; local
+Q1/P2 should attach if the current dataset is loaded. A passing offline suite
+does not replace this live test. The new extraction schema has not yet been
+verified end-to-end against the live CampusAI service in this update.
+
+## Implementation status and continuation plan
+
+| Stage | Status | Scope |
+| --- | --- | --- |
+| Local RDF and QLever | Implemented | Local index, startup helper, separate server/dataset checks |
+| Property catalog | Implemented | 30 RDF definitions recorded in property_list.json |
+| Typed extraction | Implemented | 23 supported properties, grouped entities, exact evidence checks |
+| Claim preparation | Implemented | Separate individual records for downstream processing |
+| Basic ID lookup | Existing behavior retained | Case-insensitive exact label/alias lookup; unique matches only |
+| Improved entity resolution | Discussion/planning only | Candidate retrieval, alias normalization, ambiguity review |
+| Existing-claim comparison | Planned | Duplicate, missing, conflicting, and uncertain classifications |
+| Review and export | Planned | Human review and approved additions; no graph writes today |
+
+The next step is to agree on entity resolution before implementing it. Retrieve
+matching labels and aliases from the local RDF and group candidate names by
+**QID**, not by shared spelling. Different QIDs must remain distinct candidates,
+even when their aliases normalize to the same text. Lowercasing or stripping
+punctuation may help retrieve candidates but cannot establish identity. No new
+fuzzy matcher, alias-grouping system, or second LLM call has been implemented.
+Whether an LLM helps with ambiguous candidates remains an open design choice.
+
+After identities are resolved, compare each individual claim with the graph.
+Entity matching and duplicate-statement detection are separate steps. Quantity
+comparison will need explicit unit normalization while preserving the original
+source value and evidence. Repeated/conflicting extractions currently stay intact;
+they are not automatically merged, approved, or inserted.
+
+The intended PoC will produce a reviewable report of existing, missing,
+conflicting, and unresolved claims, then export approved additions. Evaluate it
+on manually checked passages and a test copy with known facts removed. Do not
+modify the original snapshot to manufacture a successful demo. The PoC will
+remain limited by the local snapshot, selected properties, extraction accuracy,
+entity ambiguity, and the fact that an exact quote is not proof of truth.
 
 ## Troubleshooting and Git
 
