@@ -15,6 +15,11 @@ from functions import extract_input, resolve_local
 from functions import qlever_checks, display_results
 import handler
 import httpx
+from functions.pydantic_models import Extraction, KeyboardExtraction, QuantityClaim
+
+
+def grouped(source):
+    return Extraction(entities=[KeyboardExtraction(name=source['subject'], width=[QuantityClaim(value=source['value'], unit=source['unit'], evidence=source['evidence'])])]).model_dump(mode='json')
 
 
 def fact(**changes):
@@ -28,7 +33,7 @@ class PipelineTests(unittest.TestCase):
         source = fact()
         with patch.object(handler, 'check_server', side_effect=lambda: calls.append('server')), \
              patch.object(handler, 'check_dataset', side_effect=lambda: calls.append('data')), \
-             patch.object(handler, 'extract_entities', side_effect=lambda text: (calls.append('extract') or {'items': [source]})), \
+             patch.object(handler, 'extract_entities', side_effect=lambda text: (calls.append('extract') or grouped(source))), \
              patch.object(handler, 'extract_ids', side_effect=lambda item: (calls.append('resolve') or dict(item))):
             self.assertEqual(handler.run_pipeline(source['evidence']), [source])
         self.assertEqual(calls, ['server', 'data', 'extract', 'resolve'])
@@ -43,7 +48,7 @@ class PipelineTests(unittest.TestCase):
     def test_lookup_failure_keeps_source_fact(self):
         source = fact()
         with patch.object(handler, 'check_server'), patch.object(handler, 'check_dataset'), \
-             patch.object(handler, 'extract_entities', return_value={'items': [source]}), \
+             patch.object(handler, 'extract_entities', return_value=grouped(source)), \
              patch.object(handler, 'extract_ids', side_effect=httpx.ConnectError('offline')):
             result = handler.run_pipeline(source['evidence'])[0]
         self.assertEqual({key: result[key] for key in source}, source)
@@ -105,16 +110,16 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result['value'], 'Yamaha')
 
     def test_fabricated_evidence_is_rejected(self):
-        output = extract_input.EntityList(items=[extract_input.Entity(**fact())])
+        output = Extraction(entities=[KeyboardExtraction(name=fact()["subject"], width=[QuantityClaim(value=fact()["value"], unit=fact()["unit"], evidence=fact()["evidence"])])])
         with patch.object(extract_input, 'structured_completion', return_value=output):
             with self.assertRaisesRegex(ValueError, 'exact quote'):
                 extract_input.extract_entities('This source gives no dimensions.')
 
     def test_exact_source_evidence_is_accepted(self):
         source = fact()
-        output = extract_input.EntityList(items=[extract_input.Entity(**source)])
+        output = Extraction(entities=[KeyboardExtraction(name=source["subject"], width=[QuantityClaim(value=source["value"], unit=source["unit"], evidence=source["evidence"])])])
         with patch.object(extract_input, 'structured_completion', return_value=output):
-            self.assertEqual(extract_input.extract_entities(source['evidence'])['items'], [source])
+            self.assertEqual(extract_input.extract_entities(source['evidence']), grouped(source))
 
 
 if __name__ == '__main__':
