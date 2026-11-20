@@ -46,7 +46,7 @@ def print_results(facts: ResolvedExtraction | dict | list, as_json: bool = False
                         print(f"    Value QID: {claim.value_id or 'unresolved'}")
                         if len(claim.value_candidates) > 1:
                             print("    Value candidates: " + ", ".join(c.id for c in claim.value_candidates))
-                    print(f"    Evidence: {claim.evidence}")
+                    print(f"    Supporting context: {' '.join(claim.evidence.split())}")
                     for warning in claim.warnings:
                         print(f"    Review: {warning}")
         return

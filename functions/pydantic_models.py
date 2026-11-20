@@ -16,12 +16,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class SourceClaim(BaseModel):
-    """An exact supporting quotation; presence is checked against source later."""
+    """LLM-selected supporting sentences, retained as context for human review."""
 
     model_config = ConfigDict(extra="forbid")
     evidence: str = Field(min_length=1, description=(
-        "Exact contiguous quotation from the input supporting this claim. Include "
-        "enough context to identify the keyboard; never paraphrase the quotation."))
+        "A short group of supporting sentences from the input for this claim. Include "
+        "enough context to identify the keyboard, including pronoun referents. Keep it concise; do not invent supporting information."))
 
 
 class QuantityClaim(SourceClaim):
@@ -179,15 +179,6 @@ class Extraction(BaseModel):
         "multiple or conflicting claims separately; never choose a winner."))
 
 
-def validate_evidence(extraction: Extraction, source: str) -> None:
-    """Check exact quotations while retaining the grouped extraction structure."""
-    for entity in extraction.entities:
-        for field in PROPERTY_FIELDS:
-            for claim in getattr(entity, field):
-                if not claim.evidence.strip() or claim.evidence not in source:
-                    raise ValueError("Extraction rejected: evidence is not an exact quote from input.")
-
-
 def to_claims(extraction: Extraction, source: str) -> dict:
     """Legacy flat export helper; not used by the grouped handler/resolver.
 
@@ -195,9 +186,8 @@ def to_claims(extraction: Extraction, source: str) -> dict:
     Decimal values become strings only at this compatibility boundary so the
     current resolver and JSON output retain their expected types. Units are not
     converted. Evidence preserves original wording (Decimal normalizes spelling).
-    This verifies quote presence, not semantic entailment or numeric agreement.
+    Supporting context is retained without source-text or semantic validation.
     """
-    validate_evidence(extraction, source)
     claims = []
     for entity in extraction.entities:
         for field, (pid, label) in PROPERTY_FIELDS.items():
