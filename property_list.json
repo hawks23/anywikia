@@ -1,0 +1,1448 @@
+{
+  "source_file": "keyboards-index/keyboards.nt",
+  "source_sha256": "8b89c5ea379c5a53c7e1adaffe01d6f05899f812cfc24bda6dab4b420be4d7e6",
+  "property_count": 30,
+  "notes": [
+    "Property definitions are discovered through wikibase:propertyType, not guessed from names.",
+    "Labels, aliases, descriptions, predicate mappings, datatypes and units are read from this snapshot.",
+    "Observed datatypes, units and usage counts are examples in the data, not allowed-value constraints.",
+    "extraction_guidance is a proposed application mapping, not RDF-declared validation rules.",
+    "WikibaseItem properties are entity-valued in RDF; extract their source names as strings before later ID resolution.",
+    "Quantity extraction uses Decimal, including counts unless a separate whole-number rule is explicitly added.",
+    "For Time, preserve the source date text/precision before normalization; Monolingualtext also needs source language metadata.",
+    "All observed quantity unit URIs in this snapshot are http://www.wikidata.org/entity/Q199; no mm/kg unit URI is asserted in those quantity nodes. Do not infer source units from this catalog.",
+    "Empty domain/range lists mean no corresponding declarations were found; they do not establish unrestricted validity.",
+    "Every extracted claim should separately retain its exact evidence quotation; missing source values must not be filled from RDF."
+  ],
+  "properties": [
+    {
+      "property_id": "P1",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P1",
+      "property_name": "keys",
+      "labels": {
+        "da": [
+          "tangenter"
+        ],
+        "en": [
+          "keys"
+        ]
+      },
+      "aliases": {
+        "da": [
+          "antal tangenter"
+        ]
+      },
+      "descriptions": {
+        "da": [
+          "antal tangenter"
+        ],
+        "en": [
+          "number of keys on the keyboard"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P1",
+        "claim": "https://keyboards.wikibase.cloud/prop/P1",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P1",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P1",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P1",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P1",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P1",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P1"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 39
+        }
+      ],
+      "direct_fact_count": 39,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P2",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P2",
+      "property_name": "width",
+      "labels": {
+        "da": [
+          "bredde"
+        ],
+        "en": [
+          "width"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "en": [
+          "physical width"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P2",
+        "claim": "https://keyboards.wikibase.cloud/prop/P2",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P2",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P2",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P2",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P2",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P2",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P2"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 38
+        }
+      ],
+      "direct_fact_count": 38,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P3",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P3",
+      "property_name": "depth",
+      "labels": {
+        "da": [
+          "dybde"
+        ],
+        "en": [
+          "depth"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "da": [
+          "dimension af keyboardet fra forsiden til bagsiden"
+        ],
+        "en": [
+          "dimension of the keyboard from the front to the back"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P3",
+        "claim": "https://keyboards.wikibase.cloud/prop/P3",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P3",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P3",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P3",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P3",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P3",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P3"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 38
+        }
+      ],
+      "direct_fact_count": 38,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P4",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P4",
+      "property_name": "height",
+      "labels": {
+        "da": [
+          "højde"
+        ],
+        "en": [
+          "height"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {},
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P4",
+        "claim": "https://keyboards.wikibase.cloud/prop/P4",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P4",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P4",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P4",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P4",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P4",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P4"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 38
+        }
+      ],
+      "direct_fact_count": 38,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P5",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P5",
+      "property_name": "URL",
+      "labels": {
+        "da": [
+          "URL"
+        ],
+        "en": [
+          "URL"
+        ]
+      },
+      "aliases": {
+        "en": [
+          "homepage"
+        ]
+      },
+      "descriptions": {
+        "en": [
+          "Internet address"
+        ]
+      },
+      "wikibase_value_type": "Url",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Url",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P5",
+        "claim": "https://keyboards.wikibase.cloud/prop/P5",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P5",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P5",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P5",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P5",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P5",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P5"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 47,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P6",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P6",
+      "property_name": "manufacturer",
+      "labels": {
+        "da": [
+          "fabrikant"
+        ],
+        "en": [
+          "manufacturer"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "da": [
+          "fabrikanten af musikinstrumenter"
+        ],
+        "en": [
+          "maker of musical instruments"
+        ]
+      },
+      "wikibase_value_type": "WikibaseItem",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#WikibaseItem",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P6",
+        "claim": "https://keyboards.wikibase.cloud/prop/P6",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P6",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P6",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P6",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P6",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P6",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P6"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 39,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": true,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P7",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P7",
+      "property_name": "weight",
+      "labels": {
+        "da": [
+          "vægt"
+        ],
+        "en": [
+          "weight"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {},
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P7",
+        "claim": "https://keyboards.wikibase.cloud/prop/P7",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P7",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P7",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P7",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P7",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P7",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P7"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 38
+        }
+      ],
+      "direct_fact_count": 38,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P8",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P8",
+      "property_name": "polyphony",
+      "labels": {
+        "da": [
+          "polyfoni"
+        ],
+        "en": [
+          "polyphony"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "en": [
+          "number of tones that can sound simultaneously"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P8",
+        "claim": "https://keyboards.wikibase.cloud/prop/P8",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P8",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P8",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P8",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P8",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P8",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P8"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 34
+        }
+      ],
+      "direct_fact_count": 34,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P9",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P9",
+      "property_name": "color",
+      "labels": {
+        "en": [
+          "color"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {},
+      "wikibase_value_type": "WikibaseItem",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#WikibaseItem",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P9",
+        "claim": "https://keyboards.wikibase.cloud/prop/P9",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P9",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P9",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P9",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P9",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P9",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P9"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 3,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": true,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P10",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P10",
+      "property_name": "loudspeakers",
+      "labels": {
+        "da": [
+          "højtalere"
+        ],
+        "en": [
+          "loudspeakers"
+        ]
+      },
+      "aliases": {
+        "da": [
+          "højttalere"
+        ]
+      },
+      "descriptions": {
+        "da": [
+          "antal højtalere på keyboardet"
+        ],
+        "en": [
+          "number of loudspeakers on the keyboard"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P10",
+        "claim": "https://keyboards.wikibase.cloud/prop/P10",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P10",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P10",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P10",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P10",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P10",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P10"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 39
+        }
+      ],
+      "direct_fact_count": 39,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P11",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P11",
+      "property_name": "instance of",
+      "labels": {
+        "da": [
+          "tilfælde af"
+        ],
+        "en": [
+          "instance of"
+        ]
+      },
+      "aliases": {
+        "en": [
+          "is instance of"
+        ]
+      },
+      "descriptions": {},
+      "wikibase_value_type": "WikibaseItem",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#WikibaseItem",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P11",
+        "claim": "https://keyboards.wikibase.cloud/prop/P11",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P11",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P11",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P11",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P11",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P11",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P11"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 75,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": true,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P12",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P12",
+      "property_name": "MIDI in",
+      "labels": {
+        "en": [
+          "MIDI in"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "en": [
+          "MIDI in DIN plug"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P12",
+        "claim": "https://keyboards.wikibase.cloud/prop/P12",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P12",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P12",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P12",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P12",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P12",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P12"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 34
+        }
+      ],
+      "direct_fact_count": 34,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P13",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P13",
+      "property_name": "headphone outputs",
+      "labels": {
+        "en": [
+          "headphone outputs"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "en": [
+          "number of headphone outputs"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P13",
+        "claim": "https://keyboards.wikibase.cloud/prop/P13",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P13",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P13",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P13",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P13",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P13",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P13"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 33
+        }
+      ],
+      "direct_fact_count": 33,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P14",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P14",
+      "property_name": "MIDI out",
+      "labels": {
+        "en": [
+          "MIDI out"
+        ]
+      },
+      "aliases": {
+        "en": [
+          "midi out"
+        ]
+      },
+      "descriptions": {
+        "en": [
+          "MIDI DIN connector type"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P14",
+        "claim": "https://keyboards.wikibase.cloud/prop/P14",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P14",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P14",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P14",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P14",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P14",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P14"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 34
+        }
+      ],
+      "direct_fact_count": 34,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P15",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P15",
+      "property_name": "MIDI through",
+      "labels": {
+        "en": [
+          "MIDI through"
+        ]
+      },
+      "aliases": {
+        "en": [
+          "midi through"
+        ]
+      },
+      "descriptions": {
+        "en": [
+          "MIDI through DIN connector"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P15",
+        "claim": "https://keyboards.wikibase.cloud/prop/P15",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P15",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P15",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P15",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P15",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P15",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P15"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 30
+        }
+      ],
+      "direct_fact_count": 30,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P16",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P16",
+      "property_name": "power consumption",
+      "labels": {
+        "da": [
+          "effektforbrug"
+        ],
+        "en": [
+          "power consumption"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {},
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P16",
+        "claim": "https://keyboards.wikibase.cloud/prop/P16",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P16",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P16",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P16",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P16",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P16",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P16"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 16
+        }
+      ],
+      "direct_fact_count": 16,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P17",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P17",
+      "property_name": "Wikidata item",
+      "labels": {
+        "da": [
+          "Wikidata emne"
+        ],
+        "en": [
+          "Wikidata item"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "en": [
+          "corresponding Wikidata item"
+        ]
+      },
+      "wikibase_value_type": "ExternalId",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#ExternalId",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P17",
+        "claim": "https://keyboards.wikibase.cloud/prop/P17",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P17",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P17",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P17",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P17",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P17",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P17"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 11,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P18",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P18",
+      "property_name": "image",
+      "labels": {
+        "da": [
+          "billede"
+        ],
+        "en": [
+          "image"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {},
+      "wikibase_value_type": "CommonsMedia",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#CommonsMedia",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P18",
+        "claim": "https://keyboards.wikibase.cloud/prop/P18",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P18",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P18",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P18",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P18",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P18",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P18"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 6,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P19",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P19",
+      "property_name": "country",
+      "labels": {
+        "da": [
+          "land"
+        ],
+        "en": [
+          "country"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {},
+      "wikibase_value_type": "WikibaseItem",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#WikibaseItem",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P19",
+        "claim": "https://keyboards.wikibase.cloud/prop/P19",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P19",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P19",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P19",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P19",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P19",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P19"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 13,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": true,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P20",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P20",
+      "property_name": "audio outputs",
+      "labels": {
+        "en": [
+          "audio outputs"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "en": [
+          "number of audio outputs, e.g., 6.35 mm jacks"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P20",
+        "claim": "https://keyboards.wikibase.cloud/prop/P20",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P20",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P20",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P20",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P20",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P20",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P20"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 19
+        }
+      ],
+      "direct_fact_count": 19,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P21",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P21",
+      "property_name": "microphone inputs",
+      "labels": {
+        "en": [
+          "microphone inputs"
+        ]
+      },
+      "aliases": {
+        "en": [
+          "mic inputs"
+        ]
+      },
+      "descriptions": {
+        "en": [
+          "number of microphone inputs"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P21",
+        "claim": "https://keyboards.wikibase.cloud/prop/P21",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P21",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P21",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P21",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P21",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P21",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P21"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 3
+        }
+      ],
+      "direct_fact_count": 3,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P22",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P22",
+      "property_name": "audio inputs",
+      "labels": {
+        "en": [
+          "audio inputs"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "en": [
+          "number of audio inputs (not microphone inputs)"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P22",
+        "claim": "https://keyboards.wikibase.cloud/prop/P22",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P22",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P22",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P22",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P22",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P22",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P22"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 14
+        }
+      ],
+      "direct_fact_count": 14,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P23",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P23",
+      "property_name": "seller",
+      "labels": {
+        "en": [
+          "seller"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "en": [
+          "person or organization that sells a keyboard"
+        ]
+      },
+      "wikibase_value_type": "WikibaseItem",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#WikibaseItem",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P23",
+        "claim": "https://keyboards.wikibase.cloud/prop/P23",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P23",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P23",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P23",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P23",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P23",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P23"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 4,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": true,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P24",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P24",
+      "property_name": "keyboard model on sale",
+      "labels": {
+        "en": [
+          "keyboard model on sale"
+        ]
+      },
+      "aliases": {
+        "en": [
+          "on sale"
+        ]
+      },
+      "descriptions": {},
+      "wikibase_value_type": "WikibaseItem",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#WikibaseItem",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P24",
+        "claim": "https://keyboards.wikibase.cloud/prop/P24",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P24",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P24",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P24",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P24",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P24",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P24"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 4,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": true,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P25",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P25",
+      "property_name": "price",
+      "labels": {
+        "da": [
+          "pris"
+        ],
+        "en": [
+          "price"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "da": [
+          "prisen på keyboardet"
+        ],
+        "en": [
+          "price of the keyboard"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P25",
+        "claim": "https://keyboards.wikibase.cloud/prop/P25",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P25",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P25",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P25",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P25",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P25",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P25"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 4
+        }
+      ],
+      "direct_fact_count": 4,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P26",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P26",
+      "property_name": "date",
+      "labels": {
+        "da": [
+          "dato"
+        ],
+        "en": [
+          "date"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {},
+      "wikibase_value_type": "Time",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Time",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#dateTime"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P26",
+        "claim": "https://keyboards.wikibase.cloud/prop/P26",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P26",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P26",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P26",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P26",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P26",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P26"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 4,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": true
+      }
+    },
+    {
+      "property_id": "P27",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P27",
+      "property_name": "question",
+      "labels": {
+        "da": [
+          "spørgsmål"
+        ],
+        "en": [
+          "question"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {},
+      "wikibase_value_type": "Monolingualtext",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Monolingualtext",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [
+        "da",
+        "en"
+      ],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P27",
+        "claim": "https://keyboards.wikibase.cloud/prop/P27",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P27",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P27",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P27",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P27",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P27",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P27"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 63,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": false,
+        "preserve_source_language": true,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P29",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P29",
+      "property_name": "USB Type B",
+      "labels": {
+        "en": [
+          "USB Type B"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {
+        "en": [
+          "number of USB Type B female connectors"
+        ]
+      },
+      "wikibase_value_type": "Quantity",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#Quantity",
+      "observed_rdf_datatypes": [
+        "http://www.w3.org/2001/XMLSchema#decimal"
+      ],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P29",
+        "claim": "https://keyboards.wikibase.cloud/prop/P29",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P29",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P29",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P29",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P29",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P29",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P29"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [
+        {
+          "uri": "http://www.wikidata.org/entity/Q199",
+          "label": null,
+          "quantity_value_occurrences": 21
+        }
+      ],
+      "direct_fact_count": 21,
+      "extraction_guidance": {
+        "value_python_type": "Decimal",
+        "unit_field_applicable": true,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P30",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P30",
+      "property_name": "URL format",
+      "labels": {
+        "en": [
+          "URL format"
+        ]
+      },
+      "aliases": {},
+      "descriptions": {},
+      "wikibase_value_type": "String",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#String",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P30",
+        "claim": "https://keyboards.wikibase.cloud/prop/P30",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P30",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P30",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P30",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P30",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P30",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P30"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 2,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    },
+    {
+      "property_id": "P31",
+      "property_uri": "https://keyboards.wikibase.cloud/entity/P31",
+      "property_name": "sparql",
+      "labels": {
+        "en": [
+          "sparql"
+        ]
+      },
+      "aliases": {
+        "en": [
+          "SPARQL query"
+        ]
+      },
+      "descriptions": {
+        "en": [
+          "SPARQL query assuming kb: and kbt: prefixes"
+        ]
+      },
+      "wikibase_value_type": "ExternalId",
+      "wikibase_value_type_uri": "http://wikiba.se/ontology#ExternalId",
+      "observed_rdf_datatypes": [],
+      "observed_literal_languages": [],
+      "predicate_uris": {
+        "directClaim": "https://keyboards.wikibase.cloud/prop/direct/P31",
+        "claim": "https://keyboards.wikibase.cloud/prop/P31",
+        "statementProperty": "https://keyboards.wikibase.cloud/prop/statement/P31",
+        "statementValue": "https://keyboards.wikibase.cloud/prop/statement/value/P31",
+        "qualifier": "https://keyboards.wikibase.cloud/prop/qualifier/P31",
+        "qualifierValue": "https://keyboards.wikibase.cloud/prop/qualifier/value/P31",
+        "reference": "https://keyboards.wikibase.cloud/prop/reference/P31",
+        "referenceValue": "https://keyboards.wikibase.cloud/prop/reference/value/P31"
+      },
+      "declared_domain_uris": [],
+      "declared_range_uris": [],
+      "observed_units": [],
+      "direct_fact_count": 18,
+      "extraction_guidance": {
+        "value_python_type": "str",
+        "unit_field_applicable": false,
+        "entity_resolution_later": false,
+        "preserve_source_language": false,
+        "preserve_source_date_precision": false
+      }
+    }
+  ]
+}
