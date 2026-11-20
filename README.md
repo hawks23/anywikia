@@ -14,9 +14,11 @@ future work. See [workflow.md](workflow.md) for the current flowchart and
 handler.py                      # Main entry point and step orchestration
 functions/
   extract_input.py              # LLM extraction and exact-quote checks
-  pydantic_models.py            # Typed grouped models and conversion to claims
-  resolve_local.py              # Unique local QID/PID matching
+  pydantic_models.py            # Typed extraction and catalog validation
+  resolve_local.py              # Grouped QID resolution and mapped PIDs
+  resolved_models.py            # Application-owned grouped result models
   qlever_checks.py              # Server and dataset checks
+  progress.py                   # Progress messages and elapsed-time reporting
   display_results.py            # Readable or JSON output
 property_list.json              # Catalog of 30 local RDF property definitions
 local_rdf.py                    # Shared endpoint and file paths
@@ -49,7 +51,7 @@ cp .env.example .env
 ```
 
 Set CAMPUSAI_API_KEY and CAMPUSAI_MODEL in .env for extraction. Optional settings
-are CAMPUSAI_API_URL and LLM_TIMEOUT. Local lookups and checks need no credentials.
+are CAMPUSAI_API_URL, LLM_TIMEOUT, and LLM_MAX_TOKENS. Local lookups and checks need no credentials.
 The lock file records installed versions; requirements.txt allows broader versions.
 With uv, use `uv venv --python 3.13 .venv` and
 `uv pip install --python .venv/bin/python -r requirements.lock.txt`.
@@ -85,13 +87,13 @@ The handler calls each step explicitly:
 2. check_dataset verifies known Keyboards item/property definitions exist.
 3. extract_entities sends the passage and the typed model schema to CampusAI,
    returning claims grouped by keyboard and property with exact quotations.
-4. to_claims creates individual claim records for downstream processing, while
-   the grouped extraction remains a separate in-memory value in the handler.
-5. extract_ids attaches unique local IDs using the existing resolver.
-6. print_results prints individual records or machine-readable JSON.
+4. resolve_extraction enriches the grouped model directly: resolve each keyboard
+   once, attach catalog-validated PIDs, and resolve entity-valued claims.
+5. print_results prints keyboards with nested property claims or grouped JSON.
 
 Preflight failures stop before the LLM request. Extraction errors stop the run.
-If a later lookup fails, the fact is retained with unresolved IDs and a warning.
+If a later lookup fails, the fact and mapped PID are retained with unresolved
+entity IDs and a warning.
 Unknown or ambiguous names are not guessed. Source evidence being present does
 not prove it supports the extracted claim. Units are preserved without conversion.
 No source facts are retrieved from the RDF to complete the extraction.
@@ -135,12 +137,54 @@ Extraction-only output is grouped. This shortened example omits empty fields:
 }
 ```
 
-Decimal values serialize as strings in JSON. The handler converts the grouped
-claims to individual `subject`, `property`, `value`, `unit`, and `evidence`
-records, then attaches IDs and warnings. Property names come from the explicit
-field mapping, not arbitrary names invented by the LLM. The existing resolver
-still looks up the property in QLever. `handler.py --json` prints a **list of
-individual records**, not the grouped extraction or a combined envelope.
+Decimal values stay typed in memory and serialize as strings only for JSON.
+The handler does not call `to_claims()` or flatten records. The separate models
+in `functions/resolved_models.py` describe the application-owned resolved result;
+the LLM still receives only the extraction models.
+
+Handler JSON now has this shape (empty properties and candidate metadata omitted
+here for readability; the actual output preserves them):
+
+```json
+{
+  "knowledge_base": "https://keyboards.wikibase.cloud",
+  "entities": [{
+    "name": "Yamaha P-150",
+    "subject_id": "Q1",
+    "warnings": [],
+    "properties": {
+      "width": {
+        "property_id": "P2",
+        "label": "width",
+        "value_type": "Quantity",
+        "claims": [{
+          "value": "1385", "unit": "mm",
+          "evidence": "The Yamaha P-150 has a width of 1385 mm.",
+          "value_id": null, "value_candidates": [], "warnings": []
+        }]
+      }
+    }
+  }]
+}
+```
+
+Property IDs and types come from the explicit field mapping validated against
+`property_list.json`, not from the LLM or a repeated property-label search.
+Catalog drift fails clearly. Keep the catalog synchronized with the RDF.
+Subject and entity-value names use the existing exact, case-insensitive local
+label/alias lookup. Candidate IDs are retained under `subject_candidates` and
+`value_candidates`; multiple matches stay unresolved and produce warnings.
+This preserves alias matching (e.g. P150), not fuzzy similarity or typo correction.
+Names repeated within a run reuse lookup results; distinct extracted keyboard
+records are never merged automatically. Repeated/conflicting claims remain intact.
+Lookup failures preserve source content, mapped PIDs, and IDs already resolved.
+
+`to_claims()` and `extract_ids()` remain legacy helpers for old flat exports;
+neither is used by the main pipeline. The formatter can still read old flat JSON.
+
+Existing consumers of the old flat handler output must now iterate
+`entities`, then each entry in `properties`, then its `claims` list. Subject IDs
+are stored once per entity and property IDs once per property group.
 
 ### Save and inspect your own results
 
@@ -167,7 +211,8 @@ its intermediate extraction automatically. `outputs/` is ignored by Git.
 
 `Value` is the content extracted from the input. `Value QID` identifies that
 value only when the property expects another entity, such as a manufacturer.
-The resolver checks the local property's `wikibase:propertyType` and looks up
+The resolver uses the mapped property type from the local catalog (or QLever
+for legacy facts without a PID) and looks up
 the value name only for `wikibase:WikibaseItem` properties.
 
 | Property | Extracted value | Unit | Value QID |
@@ -180,13 +225,31 @@ For example, `Q1 --P6--> Q2` links Yamaha P-150 to its manufacturer Yamaha.
 For width, `Q1 --P2--> 1385` has a numeric value rather than an entity QID;
 the full quantity representation must also preserve the unit.
 
-The current formatter prints `Value QID: not linked` whenever `value_id` is null.
-For literal values this is normal, not a failed lookup. For entity-valued
-properties it can indicate an unresolved match; inspect the review warnings.
-A missing property match also prevents determining whether value lookup is needed.
-Distinguishing "not applicable" from "unresolved" in the display is future work.
+Grouped readable output shows Value QID only for entity-valued properties.
+Quantities and text do not need QIDs. Unresolved entity values show warnings and,
+when ambiguous, the candidate IDs. Grouped JSON retains nullable value_id fields.
 
 ## Run each module independently
+
+### Progress while running
+
+The handler prints short progress messages for QLever checks, CampusAI extraction,
+quotation validation, and grouped keyboard/value ID lookups. Long steps print a waiting
+message every ten seconds and report elapsed time when they finish or fail.
+Waiting messages indicate that the call is still pending, not a completion estimate.
+Source text and credentials are not included in these messages.
+
+Progress goes to **stderr**; results go to **stdout**, so JSON redirects stay valid:
+
+```bash
+python handler.py "The Yamaha P-150 has a width of 1385 mm." --json > results.json
+# Hide progress (errors are still reported):
+python handler.py "The Yamaha P-150 has a width of 1385 mm." --json --quiet
+```
+
+Standalone extraction and resolution scripts also support `--quiet`.
+
+### Standalone commands
 
 Execute these from the project root; direct script paths and `python -m functions.NAME`
 are both supported. Each module provides --help.
@@ -197,7 +260,9 @@ python functions/extract_input.py "The Yamaha P-150 has a width of 1385 mm."
 
 # Resolution only: needs QLever, not CampusAI. Uses a synthetic 999 cm sample.
 python functions/resolve_local.py
-# Supply your own extracted fact:
+# Resolve saved grouped output without another LLM call:
+python functions/resolve_local.py --extraction-file outputs/grouped.json --source-file sample_input.txt > outputs/resolved.json
+# Compatibility: resolve an older flat fact:
 python functions/resolve_local.py --fact-json '{"subject":"Yamaha P-150","property":"width","value":"999","unit":"cm","evidence":"The Yamaha P-150 has a width of 999 cm."}'
 
 # Two separate read-only checks; failures exit nonzero.
@@ -205,7 +270,7 @@ python functions/qlever_checks.py --check server
 python functions/qlever_checks.py --check data
 python functions/qlever_checks.py --check both
 
-# Formatting only: no services. Optionally pass a JSON file containing a list.
+# Formatting only: no services. Accepts grouped JSON or legacy flat lists.
 python functions/display_results.py
 python functions/display_results.py results.json --json
 ```
@@ -243,11 +308,12 @@ not the whole Wikidata database and is not automatically synchronized online.
 python -m unittest discover -s tests -v
 ```
 
-Offline tests cover source preservation, ambiguous/missing IDs, entity-valued
+Offline tests cover grouped resolution without legacy conversion, lookup caching,
+preserved candidate IDs, source preservation, ambiguous/missing IDs, entity-valued
 properties, quotation validation, handler step order, preflight failures, failed
 lookups, invalid server responses, and JSON formatting. They mock the LLM and
 network; they do not establish live CampusAI availability or extraction accuracy.
-The 18 tests also check decimal precision, absent units, conflicting claims,
+The tests also check decimal precision, absent units, conflicting claims,
 rejection of invalid quantities/extra fields, supported property mappings against
 the catalog, and local generation of the structured-output schema. Schema
 generation alone does not prove that the configured CampusAI model accepts it.
@@ -257,8 +323,7 @@ For a live smoke test, run both QLever checks above, then the extraction-only
 command, then the handler on the same passage. Check the subject, property, value,
 unit, and quoted evidence yourself. For the sample, expect width 1385 mm; local
 Q1/P2 should attach if the current dataset is loaded. A passing offline suite
-does not replace this live test. The new extraction schema has not yet been
-verified end-to-end against the live CampusAI service in this update.
+does not replace this live test. Provider availability and model behavior can change.
 
 ## Implementation status and continuation plan
 
@@ -267,13 +332,13 @@ verified end-to-end against the live CampusAI service in this update.
 | Local RDF and QLever | Implemented | Local index, startup helper, separate server/dataset checks |
 | Property catalog | Implemented | 30 RDF definitions recorded in property_list.json |
 | Typed extraction | Implemented | 23 supported properties, grouped entities, exact evidence checks |
-| Claim preparation | Implemented | Separate individual records for downstream processing |
+| Grouped resolution | Implemented | Separate typed output; subject per keyboard, mapped PIDs, per-claim value QIDs and candidates |
 | Basic ID lookup | Existing behavior retained | Case-insensitive exact label/alias lookup; unique matches only |
 | Improved entity resolution | Discussion/planning only | Candidate retrieval, alias normalization, ambiguity review |
 | Existing-claim comparison | Planned | Duplicate, missing, conflicting, and uncertain classifications |
 | Review and export | Planned | Human review and approved additions; no graph writes today |
 
-The next step is to agree on entity resolution before implementing it. Retrieve
+Further entity-resolution work can improve candidate retrieval. Retrieve
 matching labels and aliases from the local RDF and group candidate names by
 **QID**, not by shared spelling. Different QIDs must remain distinct candidates,
 even when their aliases normalize to the same text. Lowercasing or stripping
@@ -295,6 +360,19 @@ remain limited by the local snapshot, selected properties, extraction accuracy,
 entity ambiguity, and the fact that an exact quote is not proof of truth.
 
 ## Troubleshooting and Git
+
+CampusAI configuration: `CAMPUSAI_MODEL=chat` completed the current schema in
+live testing. `LLM_TIMEOUT` defaults to 60 seconds (HTTP request timeout, not a
+strict total runtime deadline); `LLM_MAX_TOKENS` defaults to 4096. Automatic SDK
+retries are disabled. The client reports model, limits, and output token usage.
+
+On 2026-11-20, the previous `google/gemma-4-26b-a4b` configuration answered plain
+requests and a tiny schema, but generated incorrect, whitespace-repeating JSON
+with the full keyboard schema and exhausted a 2048-token diagnostic limit.
+This was not a QLever or connectivity failure. If it recurs, test another model
+or a smaller schema; increasing timeouts alone does not resolve repetition.
+Model availability and behavior may change. The full handler still requires
+evidence validation; schema acceptance does not guarantee extraction accuracy.
 
 - Docker unavailable: start Docker Desktop, enable Ubuntu integration, and retry
   once docker info succeeds.

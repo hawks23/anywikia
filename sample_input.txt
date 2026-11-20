@@ -1,0 +1,63 @@
+The music department is preparing an inventory of its keyboard instruments.
+
+The first instrument is a Yamaha P-150, manufactured by Yamaha. Its specification
+sheet lists 88 keys, a width of 1385 mm, a height of 159 mm, and a weight of
+33.7 kg. The same sheet states that the Yamaha P-150 has 32-note polyphony and
+two loudspeakers. A technician measured this particular Yamaha P-150 and recorded
+its width as 138.5 cm. Both measurements have been retained in the inventory.
+The technician described its finish as black.
+
+The second instrument is a Roland JUNO-106, manufactured by Roland. The Roland
+JUNO-106 has 61 keys and six-voice polyphony. Its accompanying inventory card
+records a width of 106 cm and a weight of 10 kg. A separate handwritten note
+claims that the same Roland JUNO-106 weighs 11 kg. The department has not yet
+checked which weight is correct. Its height was not recorded.
+
+A Yamaha DX7 is stored beside the Roland JUNO-106. Yamaha manufactured the
+Yamaha DX7. The Yamaha DX7 has 61 keys, a width of 101.8 cm, and a weight of
+14.2 kg. It provides 16-note polyphony. The Yamaha DX7 is a different instrument
+from the Yamaha DX7II-D listed in the next entry.
+
+The Yamaha DX7II-D is also manufactured by Yamaha and has 61 keys. Its inventory
+record does not state its width, height, or weight. Staff must not copy those
+measurements from the Yamaha DX7 because the two entries refer to different
+models.
+
+The department also owns a Nord Stage 4 88 manufactured by Clavia DMI. The
+Nord Stage 4 88 has 88 keys and a width of 1282 mm. Its weight is recorded as
+19.6 kg. The transport case used for this instrument weighs 8 kg, but that figure
+describes the case rather than the keyboard. The case's external width is
+1420 mm and must not be recorded as the instrument's width.
+
+Another entry describes a Korg SV-2 88 manufactured by Korg. The Korg SV-2 88
+has 88 keys, a width of 1356 mm, and a height of 157 mm. Its recorded weight is
+21.45 kg. In a later maintenance entry, the Korg SV-2 88 is mentioned again:
+the technician confirmed that this instrument still has its original 88-key
+keyboard. No new measurement of its width was taken.
+
+The Yamaha CK61 is manufactured by Yamaha. Its product card lists 61 keys,
+a width of 910 mm, a height of 109 mm, and a weight of 5.6 kg. The Yamaha CK61
+has two loudspeakers. The supplier offered a bundle containing the Yamaha CK61,
+a stand, and a carrying bag with a combined shipping weight of 12.4 kg. That
+shipping weight is for the complete package, not the Yamaha CK61 alone.
+
+The Yamaha CK88 is a separate model manufactured by Yamaha. It has 88 keys.
+The inventory notes that the Yamaha CK61 and Yamaha CK88 were ordered together,
+but only the Yamaha CK61's dimensions were entered. No dimensions or weight are
+given here for the Yamaha CK88.
+
+The Roland FP-10 is manufactured by Roland and has 88 keys. The Roland FP-10
+is described as black. Its inventory sheet records a width of 1284 mm and a
+weight of 12.3 kg. A maintenance report later refers to this same instrument
+as "the FP-10" and records that its height is 140 mm.
+
+A prototype instrument is listed as the Aurora Testboard X9, manufactured by
+Aurora Instruments. The Aurora Testboard X9 has 73 keys, measures 1100 mm in
+width, and weighs 9.2 kg. Neither the model name nor the manufacturer has been
+verified against the department's knowledge base.
+
+Finally, the storeroom contains a 104-key USB computer keyboard, a sustain
+pedal weighing 0.7 kg, and an equipment rack that is 180 cm tall. These are
+accessories or other equipment, not musical keyboard instruments. A colleague
+remarked that "the newer one is lighter," but did not identify which instruments
+were being compared.

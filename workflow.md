@@ -14,18 +14,18 @@ flowchart TD
     E --> F[Validate exact evidence quotations against input]
     E -- API or validation failure --> Z
     F -- Invalid quotation --> Z
-    F --> P[to_claims: create individual records from grouped extraction]
-    P --> G[For each fact: existing extract_ids]
-    G --> H[Query local labels and aliases for subject and property]
+    F --> P[resolve_extraction: retain grouped models and validate catalog mappings]
+    P --> G[For each keyboard: resolve subject once]
+    G --> H[Attach mapped PID and catalog type to each property group]
     H --> I{Property expects an entity value?}
     I -- Yes --> J[Look up the extracted value name]
     I -- No --> K[Keep literal value and unit unchanged]
     J --> L[Attach unique IDs; warn for missing or ambiguous matches]
     K --> L
-    G -- Local lookup failure --> M[Preserve fact with unresolved IDs and warning]
-    L --> N[Collect results without replacing source content]
+    G -- Local lookup failure --> M[Preserve grouped source claims and any already-resolved IDs; add warning]
+    L --> N[Collect grouped keyboards, properties, claims and matching candidates]
     M --> N
-    N --> O[print_results: readable records or JSON]
+    N --> O[print_results: grouped readable output or JSON]
 ```
 
 The local graph supplies matching IDs, not fact values. Exact quotation presence
@@ -33,6 +33,6 @@ does not prove semantic support. This pipeline does not compare existing values,
 approve claims, or modify RDF. The two server checks are in
 `functions/qlever_checks.py`; every step module can also be executed independently.
 
-The grouped extraction and individual claims are separate in-memory values.
-Extraction-only output is grouped; handler JSON output is a flat list. Improved
-entity matching and duplicate-claim comparison remain planned, not implemented.
+The raw extraction and resolved output are separate typed grouped models.
+The handler never calls to_claims. Exact case-insensitive label/alias retrieval
+is retained; fuzzy similarity and duplicate-claim comparison remain unimplemented.
