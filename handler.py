@@ -10,6 +10,7 @@ import httpx
 from openai import OpenAIError
 
 from functions.extract_input import extract_entities
+from functions.pydantic_models import Extraction, to_claims
 from functions.resolve_local import extract_ids, BASE
 from functions.qlever_checks import check_server, check_dataset
 from functions.display_results import print_results
@@ -31,9 +32,12 @@ def run_pipeline(text: str) -> list[dict]:
     # 2. Only the source text supplies claim content and supporting quotations.
     extracted = extract_entities(text)
 
-    # 3. Resolve each claim independently; never replace its values from the RDF.
+    # Keep extraction grouped; create separate claim records for downstream steps.
+    claims = to_claims(Extraction.model_validate(extracted), text)
+
+    # 3. Existing resolution behavior is unchanged; matching improvements are deferred.
     facts = []
-    for fact in extracted["items"]:
+    for fact in claims["items"]:
         try:
             facts.append(extract_ids(fact))
         except (httpx.HTTPError, ValueError) as error:
