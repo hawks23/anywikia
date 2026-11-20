@@ -1,0 +1,17 @@
+const assert = require('node:assert/strict');
+const {compareClaim, decimalKey} = require('../frontend/comparison.js');
+const row = (pid,value,unit) => ({property:{value:`https://keyboards.wikibase.cloud/entity/${pid}`},value:{value},...(unit ? {unit:{value:`http://www.wikidata.org/entity/${unit}`}} : {})});
+const quantity={property_id:'P2',value_type:'Quantity'};
+assert.equal(decimalKey('1385.00'),decimalKey('1.385e3'));
+assert.notEqual(decimalKey('9007199254740992'),decimalKey('9007199254740993'));
+assert.equal(compareClaim(quantity,{value:'1385',unit:'mm'},[]).status,'new');
+assert.equal(compareClaim(quantity,{value:'1385',unit:'mm'},[row('P2','1385.0','Q174789')]).status,'exists');
+assert.equal(compareClaim(quantity,{value:'1000',unit:'mm'},[row('P2','1385','Q174789')]).status,'conflict');
+assert.equal(compareClaim(quantity,{value:'1385',unit:'mm'},[row('P2','1385','Q199')]).status,'uncertain');
+assert.equal(compareClaim(quantity,{value:'138.5',unit:'cm'},[row('P2','1385','Q174789')]).status,'uncertain');
+assert.equal(compareClaim({...quantity,property_id:'P1'},{value:'88',unit:'keys'},[row('P1','88.0','Q199')]).status,'exists');
+assert.equal(compareClaim({property_id:'P6',value_type:'WikibaseItem'},{value_id:'Q2'},[row('P6','https://keyboards.wikibase.cloud/entity/Q2')]).status,'exists');
+assert.equal(compareClaim({property_id:'P6',value_type:'WikibaseItem'},{value_id:null},[row('P6','https://keyboards.wikibase.cloud/entity/Q2')]).status,'uncertain');
+assert.equal(compareClaim({property_id:'P5',value_type:'Url'},{value:'new'},[row('P5','old')]).status,'conflict');
+assert.equal(compareClaim(quantity,{value:'1385',unit:'mm'},[row('P2','1','Q174789'),row('P2','1385','Q174789')]).status,'exists');
+console.log('11 comparison checks passed');
