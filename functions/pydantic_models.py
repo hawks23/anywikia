@@ -7,7 +7,10 @@ Quantity values use Decimal, matching the snapshot's xsd:decimal representation
 even for counts. Entity-valued properties contain source names, never guessed IDs.
 Offer, seller and stored-query properties are intentionally outside this model.
 """
+import json
 from decimal import Decimal
+from functools import lru_cache
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -140,6 +143,32 @@ PROPERTY_FIELDS = {
 }
 
 
+@lru_cache(maxsize=1)
+def _property_catalog() -> dict:
+    """Load the checked-in RDF catalog once per process; no endpoint request."""
+    path = Path(__file__).resolve().parents[1] / "property_list.json"
+    return {p["property_id"]: p for p in json.loads(path.read_text())["properties"]}
+
+
+def validate_mapped_property(pid: str, label: str) -> dict:
+    """Validate a supported PID, canonical label and model type against the catalog.
+
+    A supplied PID is never silently replaced by a label search. Catalog drift
+    requires updating the catalog/model together; this is not a live RDF check.
+    """
+    field = next((name for name, pair in PROPERTY_FIELDS.items()
+                  if pair == (pid, label)), None)
+    prop = _property_catalog().get(pid)
+    if field is None or prop is None or prop["property_name"] != label:
+        raise ValueError(f"Property mapping does not match local catalog: {label} ({pid})")
+    claim_type = KeyboardExtraction.model_fields[field].annotation.__args__[0]
+    expected = (QuantityClaim if prop["wikibase_value_type"] == "Quantity" else
+                EntityClaim if prop["wikibase_value_type"] == "WikibaseItem" else TextClaim)
+    if claim_type is not expected:
+        raise ValueError(f"Property datatype does not match extraction model: {pid}")
+    return prop
+
+
 class Extraction(BaseModel):
     """One record per keyboard; unsupported or absent facts stay unfilled."""
 
@@ -160,8 +189,9 @@ def validate_evidence(extraction: Extraction, source: str) -> None:
 
 
 def to_claims(extraction: Extraction, source: str) -> dict:
-    """Validate quotes and flatten typed fields to the existing handler contract.
+    """Legacy flat export helper; not used by the grouped handler/resolver.
 
+    Carry catalog-validated PIDs from PROPERTY_FIELDS, never from the LLM.
     Decimal values become strings only at this compatibility boundary so the
     current resolver and JSON output retain their expected types. Units are not
     converted. Evidence preserves original wording (Decimal normalizes spelling).
@@ -170,10 +200,105 @@ def to_claims(extraction: Extraction, source: str) -> dict:
     validate_evidence(extraction, source)
     claims = []
     for entity in extraction.entities:
-        for field, (_, label) in PROPERTY_FIELDS.items():
+        for field, (pid, label) in PROPERTY_FIELDS.items():
             for claim in getattr(entity, field):
-                claims.append({"subject": entity.name, "property": label,
+                validate_mapped_property(pid, label)
+                claims.append({"subject": entity.name, "property": label, "property_id": pid,
                                "value": str(claim.value),
                                "unit": claim.unit if isinstance(claim, QuantityClaim) else None,
                                "evidence": claim.evidence})
     return {"items": claims}
+
+"""
+EXAMPLE: filled LLM extraction model BEFORE to_claims()
+
+Synthetic input (20 whitespace-separated words, two keyboard entities):
+The Yamaha P-150 has 88 keys and measures 1385 mm wide. The Roland FP-10 has 88 keys and is black.
+
+Illustrative valid output, not a recorded live LLM response. Shown as the JSON
+representation of the parsed Extraction object: result.model_dump(mode="json").
+Quantity values are Decimal inside the Pydantic object and serialize as strings.
+All unmentioned properties remain empty lists. No QIDs or PIDs are present yet;
+to_claims() has NOT flattened these grouped properties or attached mapped PIDs.
+Here "keys" is preserved as the count unit explicitly present in the input.
+
+{
+  "entities": [
+    {
+      "name": "Yamaha P-150",
+      "keys": [
+        {
+          "evidence": "The Yamaha P-150 has 88 keys and measures 1385 mm wide.",
+          "value": "88",
+          "unit": "keys"
+        }
+      ],
+      "width": [
+        {
+          "evidence": "The Yamaha P-150 has 88 keys and measures 1385 mm wide.",
+          "value": "1385",
+          "unit": "mm"
+        }
+      ],
+      "depth": [],
+      "height": [],
+      "url": [],
+      "manufacturer": [],
+      "weight": [],
+      "polyphony": [],
+      "color": [],
+      "loudspeakers": [],
+      "instance_of": [],
+      "midi_in": [],
+      "headphone_outputs": [],
+      "midi_out": [],
+      "midi_through": [],
+      "power_consumption": [],
+      "wikidata_item": [],
+      "image": [],
+      "country": [],
+      "audio_outputs": [],
+      "microphone_inputs": [],
+      "audio_inputs": [],
+      "usb_type_b": []
+    },
+    {
+      "name": "Roland FP-10",
+      "keys": [
+        {
+          "evidence": "The Roland FP-10 has 88 keys and is black.",
+          "value": "88",
+          "unit": "keys"
+        }
+      ],
+      "width": [],
+      "depth": [],
+      "height": [],
+      "url": [],
+      "manufacturer": [],
+      "weight": [],
+      "polyphony": [],
+      "color": [
+        {
+          "evidence": "The Roland FP-10 has 88 keys and is black.",
+          "value": "black"
+        }
+      ],
+      "loudspeakers": [],
+      "instance_of": [],
+      "midi_in": [],
+      "headphone_outputs": [],
+      "midi_out": [],
+      "midi_through": [],
+      "power_consumption": [],
+      "wikidata_item": [],
+      "image": [],
+      "country": [],
+      "audio_outputs": [],
+      "microphone_inputs": [],
+      "audio_inputs": [],
+      "usb_type_b": []
+    }
+  ]
+}
+"""

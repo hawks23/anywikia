@@ -23,6 +23,7 @@ class ModelTests(unittest.TestCase):
         result = to_claims(Extraction(entities=[KeyboardExtraction(name="P-150", width=[claim])]), claim.evidence)
         self.assertEqual(result['items'][0]['value'], '1385.00100')
         self.assertEqual(result['items'][0]['unit'], 'mm')
+        self.assertEqual(result['items'][0]['property_id'], 'P2')
 
     def test_multiple_conflicting_claims_survive(self):
         source = 'It weighs 10 kg. Another note says 11 kg.'

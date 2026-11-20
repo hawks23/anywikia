@@ -10,15 +10,17 @@ import httpx
 from openai import OpenAIError
 
 from functions.extract_input import extract_entities
-from functions.pydantic_models import Extraction, to_claims
-from functions.resolve_local import extract_ids, BASE
+from functions.pydantic_models import Extraction, PROPERTY_FIELDS
+from functions.resolve_local import resolve_extraction
+from functions.resolved_models import ResolvedExtraction
 from functions.qlever_checks import check_server, check_dataset
 from functions.display_results import print_results
+from functions.progress import configure_progress, report, step
 
 SAMPLE_TEXT = "The Yamaha P-150 has a width of 1385 mm."
 
 
-def run_pipeline(text: str) -> list[dict]:
+def run_pipeline(text: str) -> ResolvedExtraction:
     """Return extracted claims with local IDs and review warnings.
 
     Preflight checks fail before making an LLM request if QLever is unavailable.
@@ -26,25 +28,26 @@ def run_pipeline(text: str) -> list[dict]:
     source fact with unresolved IDs instead of silently dropping it.
     """
     # 1. Verify query execution, then the intended dataset.
-    check_server()
-    check_dataset()
+    with step("Checking QLever server"):
+        check_server()
+    with step("Checking Keyboards dataset"):
+        check_dataset()
 
     # 2. Only the source text supplies claim content and supporting quotations.
     extracted = extract_entities(text)
 
-    # Keep extraction grouped; create separate claim records for downstream steps.
-    claims = to_claims(Extraction.model_validate(extracted), text)
-
-    # 3. Existing resolution behavior is unchanged; matching improvements are deferred.
-    facts = []
-    for fact in claims["items"]:
-        try:
-            facts.append(extract_ids(fact))
-        except (httpx.HTTPError, ValueError) as error:
-            facts.append({**fact, "subject_id": None, "property_id": None,
-                          "value_id": None, "knowledge_base": BASE.removesuffix("/entity/"),
-                          "warnings": [f"Local lookup failed: {error}"]})
-    return facts
+    # 3. Validate the grouped extraction and enrich it directly; never flatten it.
+    extraction = Extraction.model_validate(extracted)
+    count = sum(len(getattr(entity, field)) for entity in extraction.entities
+                for field in PROPERTY_FIELDS)
+    report(f"Extracted {len(extraction.entities)} keyboard(s), {count} claim(s)")
+    with step("Resolving grouped keyboards and values"):
+        result = resolve_extraction(extraction, text)
+    warnings = sum(len(entity.warnings) + sum(len(claim.warnings)
+                   for prop in entity.properties.values() for claim in prop.claims)
+                   for entity in result.entities)
+    report(f"Ready: {len(result.entities)} keyboard(s), {count} claim(s), {warnings} review warning(s)")
+    return result
 
 
 def main():
@@ -52,12 +55,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("text", nargs="?", default=SAMPLE_TEXT)
     parser.add_argument("--json", action="store_true", help="Print machine-readable records")
+    parser.add_argument("--quiet", action="store_true", help="Hide progress; errors still appear")
     args = parser.parse_args()
+    configure_progress(quiet=args.quiet)
     try:
         facts = run_pipeline(args.text)
     except (httpx.HTTPError, OpenAIError, ValueError) as error:
         raise SystemExit(f"Pipeline failed: {error}") from error
     # 4. Presentation is separate from extraction and resolution.
+    report("Printing JSON results" if args.json else "Printing results")
     print_results(facts, as_json=args.json)
 
 

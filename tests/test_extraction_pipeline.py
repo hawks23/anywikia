@@ -16,6 +16,7 @@ from functions import qlever_checks, display_results
 import handler
 import httpx
 from functions.pydantic_models import Extraction, KeyboardExtraction, QuantityClaim
+from functions.resolved_models import ResolvedExtraction
 
 
 def grouped(source):
@@ -34,8 +35,9 @@ class PipelineTests(unittest.TestCase):
         with patch.object(handler, 'check_server', side_effect=lambda: calls.append('server')), \
              patch.object(handler, 'check_dataset', side_effect=lambda: calls.append('data')), \
              patch.object(handler, 'extract_entities', side_effect=lambda text: (calls.append('extract') or grouped(source))), \
-             patch.object(handler, 'extract_ids', side_effect=lambda item: (calls.append('resolve') or dict(item))):
-            self.assertEqual(handler.run_pipeline(source['evidence']), [source])
+             patch.object(handler, 'resolve_extraction', side_effect=lambda model, text: (calls.append('resolve') or ResolvedExtraction())) as resolve:
+            self.assertEqual(handler.run_pipeline(source['evidence']), ResolvedExtraction())
+            self.assertIsInstance(resolve.call_args.args[0], Extraction)
         self.assertEqual(calls, ['server', 'data', 'extract', 'resolve'])
 
     def test_preflight_failure_prevents_llm_call(self):
@@ -49,11 +51,15 @@ class PipelineTests(unittest.TestCase):
         source = fact()
         with patch.object(handler, 'check_server'), patch.object(handler, 'check_dataset'), \
              patch.object(handler, 'extract_entities', return_value=grouped(source)), \
-             patch.object(handler, 'extract_ids', side_effect=httpx.ConnectError('offline')):
-            result = handler.run_pipeline(source['evidence'])[0]
-        self.assertEqual({key: result[key] for key in source}, source)
-        self.assertIsNone(result['subject_id'])
-        self.assertTrue(result['warnings'])
+             patch.object(resolve_local, 'search_local', side_effect=httpx.ConnectError('offline')):
+            result = handler.run_pipeline(source['evidence']).entities[0]
+        claim = result.properties['width'].claims[0]
+        self.assertEqual(str(claim.value), source['value'])
+        self.assertEqual(claim.unit, source['unit'])
+        self.assertEqual(claim.evidence, source['evidence'])
+        self.assertIsNone(result.subject_id)
+        self.assertEqual(result.properties['width'].property_id, 'P2')
+        self.assertTrue(result.warnings)
 
     def test_empty_dataset_check_fails(self):
         response = httpx.Response(200, json={'boolean': False},
