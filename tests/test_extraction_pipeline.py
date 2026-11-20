@@ -115,11 +115,11 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result['value_id'], 'Q2')
         self.assertEqual(result['value'], 'Yamaha')
 
-    def test_fabricated_evidence_is_rejected(self):
+    def test_evidence_is_returned_without_source_matching(self):
         output = Extraction(entities=[KeyboardExtraction(name=fact()["subject"], width=[QuantityClaim(value=fact()["value"], unit=fact()["unit"], evidence=fact()["evidence"])])])
         with patch.object(extract_input, 'structured_completion', return_value=output):
-            with self.assertRaisesRegex(ValueError, 'exact quote'):
-                extract_input.extract_entities('This source gives no dimensions.')
+            result = extract_input.extract_entities('This source gives no dimensions.')
+            self.assertEqual(result, output.model_dump(mode='json'))
 
     def test_exact_source_evidence_is_accepted(self):
         source = fact()

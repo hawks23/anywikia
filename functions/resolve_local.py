@@ -13,7 +13,7 @@ from rdflib import Literal
 from local_rdf import SPARQL_ENDPOINT
 from functions.progress import configure_progress, report
 from functions.pydantic_models import (
-    Extraction, PROPERTY_FIELDS, QuantityClaim, validate_evidence, validate_mapped_property,
+    Extraction, PROPERTY_FIELDS, QuantityClaim, validate_mapped_property,
 )
 from functions.resolved_models import (
     Candidate, ResolvedClaim, ResolvedProperty, ResolvedKeyboard, ResolvedExtraction,
@@ -57,13 +57,12 @@ SELECT DISTINCT ?entity ?type WHERE {{
 def resolve_extraction(extraction: Extraction, source: str) -> ResolvedExtraction:
     """Resolve the grouped model directly, never passing through flat triples.
 
-    Validate evidence and catalog mappings before lookup. Query each keyboard
+    Validate catalog mappings before lookup. Evidence is carried through for review. Query each keyboard
     name once, and cache successful name searches within this run. Preserve all
     repeated/conflicting claims and candidate IDs; ambiguity is not guessed away.
     Network failures are recorded at the subject or individual value level so a
     failed value lookup does not discard a known subject QID or mapped PID.
     """
-    validate_evidence(extraction, source)
     definitions = {field: validate_mapped_property(pid, label)
                    for field, (pid, label) in PROPERTY_FIELDS.items()}
     result = ResolvedExtraction()
@@ -154,14 +153,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fact-json", help="JSON object with subject, property, value, unit and evidence")
     parser.add_argument("--extraction-file", type=Path, help="Grouped Extraction JSON")
-    parser.add_argument("--source-file", type=Path, help="Original text for evidence validation")
+    parser.add_argument("--source-file", type=Path, help="Optional original text (retained for CLI compatibility)")
     parser.add_argument("--quiet", action="store_true", help="Hide progress messages")
     args = parser.parse_args()
     configure_progress(quiet=args.quiet)
     if args.fact_json and (args.extraction_file or args.source_file):
         parser.error("Use --fact-json or the grouped file options, not both")
-    if bool(args.extraction_file) != bool(args.source_file):
-        parser.error("--extraction-file and --source-file must be supplied together")
+    if args.source_file and not args.extraction_file:
+        parser.error("--source-file requires --extraction-file")
     try:
         if args.fact_json:
             output = extract_ids(json.loads(args.fact_json))

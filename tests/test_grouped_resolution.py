@@ -67,11 +67,11 @@ class GroupedResolutionTests(unittest.TestCase):
         self.assertTrue(entity.warnings)
         self.assertEqual(len(entity.properties['width'].claims), 2)
 
-    def test_invalid_evidence_fails_before_any_lookup(self):
-        with patch.object(resolve_local, 'search_local') as search:
-            with self.assertRaises(ValueError):
-                resolve_local.resolve_extraction(extraction(), 'different source')
-        search.assert_not_called()
+    def test_evidence_is_preserved_without_source_matching(self):
+        with patch.object(resolve_local, 'search_local', return_value=[]) as search:
+            result = resolve_local.resolve_extraction(extraction(), 'different source')
+        self.assertTrue(search.called)
+        self.assertEqual(result.entities[0].properties['width'].claims[0].evidence, SOURCE)
 
     def test_catalog_drift_fails_before_lookup(self):
         with patch.object(resolve_local, 'validate_mapped_property', side_effect=ValueError('catalog drift')), \
