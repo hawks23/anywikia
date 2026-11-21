@@ -27,9 +27,17 @@ function fetchRecord(qid) {
   }));
   return recordCache.get(qid);
 }
-function recordPanel(candidate, entity, refreshComparison) {
+function recordPanel(candidate, entity, confirmMatch) {
+  const choice = el("div", undefined, "candidate-choice");
+  const choiceHeader = el("div", undefined, "candidate-header");
+  choiceHeader.append(el("strong", candidate.name || `Local record ${candidate.id}`));
+  choiceHeader.append(el("span", candidate.id, "candidate-id"));
+  const confirm = el("button", "Confirm this match");
+  confirm.className = "confirm-match";
   const details = el("details");
-  details.append(el("summary", `Inspect RDF record · ${candidate.id}`));
+  confirm.onclick = () => { confirmMatch(candidate); details.open = false; };
+  choice.append(choiceHeader, confirm);
+  details.append(el("summary", "View stored properties"));
   const body = el("div"); details.append(body);
   let loaded = false, loading = false;
   details.addEventListener("toggle", async () => {
@@ -48,22 +56,15 @@ function recordPanel(candidate, entity, refreshComparison) {
         if (row.unit) line.append(el("small", `Stored unit: ${row.unit.value}`));
         body.append(line);
       }
-      const confirm = el("button", "Confirm this match");
-      const status = el("p", "", "small");
-      confirm.onclick = () => {
-        entity.review_match = candidate.id;
-        entity.name_edited = false;
-        refreshComparison();
-        status.textContent = `Reviewed match: ${candidate.id}. Saved in your review draft.`;
-      };
-      body.append(confirm, status); loaded = true;
+      loaded = true;
     } catch (error) {
       const retry = el("button", "Retry record lookup");
       retry.onclick = () => { details.open = false; setTimeout(() => { details.open = true; }, 0); };
       body.replaceChildren(el("p", error.message, "warning"), retry);
     } finally { loading = false; }
   });
-  return details;
+  choice.append(details);
+  return choice;
 }
 // Compact mode bounds the result pane and shows one expanded entity at a time.
 // Keep the same DOM nodes when switching views so edits and loaded RDF survive.
@@ -88,7 +89,7 @@ function render() {
     async function refreshComparison() {
       const version = ++comparisonVersion;
       const qid = entity.review_match || (!entity.name_edited && entity.subject_id);
-      for (const view of comparisonViews) view.show(null, qid ? "Comparing with local RDF…" : "Match an entity to compare values");
+      for (const view of comparisonViews) view.show(null, qid ? "Comparing with local RDF…" : entity.demo_added ? "New entity draft · no existing record selected" : "Match an entity to compare values");
       if (!qid) return;
       try {
         const record = await fetchRecord(qid);
@@ -104,7 +105,8 @@ function render() {
     const summary = el("summary", undefined, "entity-summary");
     const summaryName = el("strong", entity.name);
     const claimCount = Object.values(entity.properties).reduce((n, prop) => n + prop.claims.length, 0);
-    summary.append(summaryName, el("span", `${claimCount} claims · ${entity.subject_id || (entity.subject_candidates.length ? "Ambiguous" : "Unresolved")}`, "small"));
+    const summaryStatus = el("span", `${claimCount} claims · ${entity.review_match || entity.subject_id || (entity.subject_candidates.length ? "Ambiguous" : "Unresolved")}`, "small");
+    summary.append(summaryName, summaryStatus);
     card.append(summary);
     summary.addEventListener("click", () => {
       if (!card.open && $("results").classList.contains("compact")) {
@@ -113,19 +115,55 @@ function render() {
         }
       }
     });
+    // Resolve identity first, then edit the claims. Keep claim nodes in place
+    // when confirming a candidate so in-progress value edits are never lost.
     const head = el("div", undefined, "card-head");
-    head.append(field("Keyboard name", entity.name, value => {
-      entity.name = value; entity.review_match = null;
-      entity.name_edited = true; refreshComparison();
-      summaryName.textContent = value || "Unnamed keyboard";
-      badge.textContent = "Name edited · original match needs review";
-      badge.className = "chip unresolved";
-    }));
     const candidates = entity.subject_candidates;
-    const badge = el("span", entity.subject_id ? `LOCAL MATCH · ${entity.subject_id}` : candidates.length ? "MULTIPLE MATCHES · REVIEW" : "UNRESOLVED · REVIEW", `chip${entity.subject_id ? "" : " unresolved"}`);
-    head.append(badge); card.append(head);
+    const badge = el("span", entity.subject_id ? `LOCAL MATCH · ${entity.subject_id}` : "UNRESOLVED · REVIEW", `chip${entity.subject_id ? "" : " unresolved"}`);
+    const originNote = el("p", "", "small");
+    const matching = el("details", undefined, "match-choices");
+    const matchingTitle = el("summary", entity.subject_id ? "Inspect or change match" : "Choose the matching keyboard");
+    matching.append(matchingTitle);
+    matching.open = !entity.subject_id;
+    const unmatchedActions = el("div");
+    const newEntityMessage = el("div");
+    newEntityMessage.setAttribute("role", "status");
+    const warnings = el("div");
+    for (const warning of entity.warnings) warnings.append(el("p", warning, "warning"));
+    function confirmMatch(candidate) {
+      entity.source_name ??= entity.name;
+      entity.name = candidate.name || entity.name;
+      entity.subject_id = candidate.id;
+      entity.review_match = candidate.id;
+      entity.name_edited = false;
+      entity.demo_added = false;
+      summaryName.textContent = entity.name;
+      summaryStatus.textContent = `${claimCount} claims · ${candidate.id}`;
+      nameEditor.querySelector("input").value = entity.name;
+      badge.textContent = `MATCHED · ${candidate.id}`;
+      badge.className = "chip";
+      originNote.textContent = entity.source_name !== entity.name ? `From text: ${entity.source_name}` : "";
+      warnings.hidden = true;
+      newEntityMessage.textContent = "";
+      newEntityMessage.className = "";
+      matching.open = false;
+      matchingTitle.textContent = "Inspect or change match";
+      refreshComparison();
+    }
+    const nameEditor = el("details", undefined, "name-editor");
+    nameEditor.append(el("summary", "Edit name"));
+    nameEditor.append(field("Keyboard name", entity.name, value => {
+      entity.name = value; entity.review_match = null; entity.name_edited = true;
+      summaryName.textContent = value || "Unnamed keyboard";
+      summaryStatus.textContent = `${claimCount} claims · Needs matching`;
+      badge.textContent = "NAME EDITED · REVIEW MATCH"; badge.className = "chip unresolved";
+      matching.open = true;
+      refreshComparison();
+    }));
+    head.append(el("p", "MATCH THE KEYBOARD", "section-kicker"), badge, originNote, matching, nameEditor);
+    card.append(head);
     const body = el("div", undefined, "card-body");
-    for (const warning of entity.warnings) body.append(el("p", warning, "warning"));
+    matching.append(warnings);
     for (const [key, prop] of Object.entries(entity.properties)) {
       for (const claim of prop.claims) {
         const block = el("div", undefined, "claim");
@@ -137,7 +175,7 @@ function render() {
           claim.value = value; claim.value_id = null; claim.value_candidates = [];
           claim.edited = true;
           refreshComparison();
-          valueStatus.textContent = "Edited value · original value match cleared; not re-resolved.";
+          valueStatus.textContent = prop.value_type === "WikibaseItem" ? "Edited · entity value needs matching" : "Edited value";
         }));
         if (prop.value_type === "Quantity") fields.append(field("Unit", claim.unit, value => { claim.unit = value || null; claim.edited = true; refreshComparison(); }));
         block.append(fields, valueStatus);
@@ -169,20 +207,47 @@ function render() {
       }
     }
     if (!Object.values(entity.properties).some(p => p.claims.length)) body.append(el("p", "No supported properties were extracted.", "small"));
-    for (const candidate of candidates) body.append(recordPanel(candidate, entity, refreshComparison));
-    if (!candidates.length && entity.warnings.some(w => w.includes("no local match"))) {
-      const actions = el("div", undefined, "actions");
-      actions.append(el("p", "No exact label or alias match. This may be a new entity or an unrecognized name.", "small"));
-      const add = el("button", "Add new entity (demo)");
-      const message = el("div"); message.setAttribute("role", "status");
-      add.onclick = () => {
-        entity.demo_added = true; message.className = "success";
-        message.textContent = "ENTITY ADDED !";
-        add.disabled = true;
-      };
-      actions.append(add, el("p", "Placeholder only — nothing is written to the RDF.", "small"), message);
-      body.append(actions);
+    for (const candidate of candidates) matching.append(recordPanel(candidate, entity, confirmMatch));
+    if (entity.suggestion_error) matching.append(el("p", entity.suggestion_error, "warning"));
+    if (entity.name_suggestions?.length) {
+      const suggestions = el("section", undefined, "name-suggestions");
+      suggestions.append(el("h3", "Did you mean…?", "suggestions-title"));
+      suggestions.append(el("p", "Choose a record below. Your extracted values will stay editable.", "small"));
+      for (const candidate of entity.name_suggestions) {
+
+        suggestions.append(recordPanel(candidate, entity, confirmMatch));
+      }
+      matching.append(suggestions);
     }
+    // Always retain the alternative, including after confirming a suggestion.
+    // This only marks a new-entity draft; it does not create an RDF record/QID.
+    const actions = el("div", undefined, "new-entity-choice");
+    actions.append(el("strong", "Or, this is a new entity"));
+    actions.append(el("p", "None of these records is the right keyboard? Keep your extracted values as a new entity draft.", "small"));
+    const add = el("button", "Use as new entity (demo)");
+    add.onclick = () => {
+      entity.source_name ??= entity.name;
+      if (!entity.name_edited) entity.name = entity.source_name;
+      entity.subject_id = null;
+      entity.review_match = null;
+      entity.name_edited = false;
+      entity.demo_added = true;
+      summaryName.textContent = entity.name;
+      summaryStatus.textContent = `${claimCount} claims · New entity draft`;
+      nameEditor.querySelector("input").value = entity.name;
+      badge.textContent = "NEW ENTITY · DEMO";
+      badge.className = "chip unresolved";
+      originNote.textContent = "";
+      warnings.hidden = true;
+      matchingTitle.textContent = "Inspect or change match";
+      newEntityMessage.className = "success";
+      newEntityMessage.textContent = "ENTITY ADDED !";
+      refreshComparison();
+    };
+    actions.append(add, el("p", "Placeholder only — nothing is written to the RDF.", "small"), newEntityMessage);
+    unmatchedActions.append(actions);
+    matching.append(unmatchedActions);
+    body.prepend(el("p", "REVIEW THE VALUES", "section-kicker"));
     card.append(body); $("results").append(card);
     refreshComparison();
   }
