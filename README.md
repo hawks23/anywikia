@@ -19,6 +19,7 @@ functions/
   pydantic_models.py            # Typed extraction and catalog validation
   resolve_local.py              # Grouped QID resolution and mapped PIDs
   resolved_models.py            # Application-owned grouped result models
+  similar_names.py              # Lazy server cache and fuzzy name suggestions
   qlever_checks.py              # Server and dataset checks
   progress.py                   # Progress messages and elapsed-time reporting
   display_results.py            # Readable or JSON output
@@ -73,9 +74,12 @@ uses paths relative to its own script and verifies the container mount.
 Stop with `docker stop qlever.server.anywikia`. Stop and rebuild the index after
 changing keyboards.nt; editing RDF alone does not change the running index.
 
+See [how-to-run.md](how-to-run.md) for the quick start and
+[documentation-checklist.md](documentation-checklist.md) for pre-push maintenance.
+
 ## Local review website
 
-On the `front-end` branch, start QLever and the local web server:
+Start QLever and the local web server:
 
 ```bash
 cd ~/anywikia
@@ -97,11 +101,15 @@ server after changing Python code to load the changes.
   switch to compact mode: collapsed entity summaries in a scrollable pane, with
   one entity open at a time. Toggle compact/expanded view at any time; edits and
   loaded RDF details are preserved.
-- Expand **Inspect RDF record** for each candidate to fetch its stored direct
-  properties, labels and available quantity-unit URIs from QLever. Qualifiers and
-  references are not displayed. **Confirm this match** records a manual decision.
-- Unmatched names offer **Add new entity (demo)** and show **ENTITY ADDED !**.
-  This is a placeholder: no RDF file, index or server data is modified.
+- **Match the keyboard** comes before value editing. If exact lookup fails,
+  **Did you mean…?** offers up to three similar names. Inspect **View stored
+  properties**, then **Confirm this match** to replace the reviewed name/QID.
+  The original name is retained; matching choices collapse and extracted values
+  remain editable under **Review the values**. Comparisons use the selected QID.
+- **Use as new entity (demo)** is always available under match choices, including
+  after confirmation. It clears the selected QID, restores the original source
+  name unless manually edited, and keeps edited claims. **ENTITY ADDED !** is a
+  placeholder only: no RDF file, index or server data is modified.
 - **Export review** downloads the original result and a separate editable review
   draft. Reloading the page loses the draft. Evidence stays unchanged. Edited
   values are not automatically re-resolved or validated as facts; changing a
@@ -110,7 +118,7 @@ server after changing Python code to load the changes.
 
 This is a local development UI, bound to loopback. It is not a public multiuser
 server. Exact label/alias matching is unchanged; an unmatched name is not proof
-of a new entity. Lookup failures do not enable the add placeholder. Property PIDs
+of a new entity. A failed lookup is not evidence of a new entity; the demo choice is manual. Property PIDs
 remain fixed by the supported schema. Review exports are separate from the
 handler's JSON format and are not currently importable into the CLI.
 
@@ -217,7 +225,8 @@ Catalog drift fails clearly. Keep the catalog synchronized with the RDF.
 Subject and entity-value names use the existing exact, case-insensitive local
 label/alias lookup. Candidate IDs are retained under `subject_candidates` and
 `value_candidates`; multiple matches stay unresolved and produce warnings.
-This preserves alias matching (e.g. P150), not fuzzy similarity or typo correction.
+The CLI preserves exact alias matching (e.g. P150). The website adds the
+similar-name fallback described below; it never automatically accepts suggestions.
 Names repeated within a run reuse lookup results; distinct extracted keyboard
 records are never merged automatically. Repeated/conflicting claims remain intact.
 Lookup failures preserve source content, mapped PIDs, and IDs already resolved.
@@ -379,18 +388,30 @@ does not replace this live test. Provider availability and model behavior can ch
 | Typed extraction | Implemented | 23 supported properties, grouped entities, supporting sentences for review |
 | Grouped resolution | Implemented | Separate typed output; subject per keyboard, mapped PIDs, per-claim value QIDs and candidates |
 | Basic ID lookup | Existing behavior retained | Case-insensitive exact label/alias lookup; unique matches only |
-| Improved entity resolution | Discussion/planning only | Candidate retrieval, alias normalization, ambiguity review |
+| Similar-name suggestions | Implemented in website | Lazy cached labels/aliases, Levenshtein distance below 3, top three QIDs, manual selection |
 | Existing-claim comparison | Implemented in website | Direct-value comparisons; matching, differing, missing and uncertain results; no unit conversion |
 | Review and export | Implemented for drafts | Browser edits, manual match confirmation, JSON review export |
 | Approved RDF updates | Planned | Keep/replace/add decisions with provenance and persistence; no graph writes today |
 
-Further entity-resolution work can improve candidate retrieval. Retrieve
-matching labels and aliases from the local RDF and group candidate names by
-**QID**, not by shared spelling. Different QIDs must remain distinct candidates,
-even when their aliases normalize to the same text. Lowercasing or stripping
-punctuation may help retrieve candidates but cannot establish identity. No new
-fuzzy matcher, alias-grouping system, or second LLM call has been implemented.
-Whether an LLM helps with ambiguous candidates remains an open design choice.
+### Similar-name suggestions and cache
+
+Only a keyboard with **no exact local match** triggers `functions/similar_names.py`.
+Exact matches, ambiguous exact matches and failed queries do not load the cache.
+The web server loads labels, aliases and QIDs into memory on first demand and
+reuses them for five minutes. Expiry refreshes only on the next fuzzy lookup;
+there is no background fetch or JSON cache file. Restarting clears this cache.
+
+Candidates currently require the local P1 (number of keys) property, so records
+without P1 are excluded. Names are case-folded and whitespace-normalized, retaining
+punctuation. Each QID receives its lowest label/alias Levenshtein distance; up to
+three distinct QIDs with distance **< 3** are suggested. No candidates means no
+suggestion panel. Errors are displayed separately from an empty result.
+
+Suggestions may be different model variants, so selection is manual. Manufacturer
+and other entity-valued claims still use exact lookup. The cache module contains
+a TODO for future real creation: once a new entity is queryable in QLever, update
+or invalidate an already-created cache with its **QID**, name and user aliases.
+The demo button does not change RDF or the cache. PIDs identify properties.
 
 After identities are resolved, the website compares each individual claim with
 the graph. The CLI does not perform this comparison. Entity matching and
@@ -409,8 +430,8 @@ entity ambiguity, and unverified supporting context.
 ## Troubleshooting and Git
 
 CampusAI configuration: `CAMPUSAI_MODEL=chat` completed the current schema in
-live testing. `LLM_TIMEOUT` defaults to 60 seconds (HTTP request timeout, not a
-strict total runtime deadline); `LLM_MAX_TOKENS` defaults to 4096. Automatic SDK
+live testing. `LLM_TIMEOUT` defaults to 180 seconds (HTTP request timeout, not a
+strict total runtime deadline); `LLM_MAX_TOKENS` defaults to 8192. Automatic SDK
 retries are disabled. The client reports model, limits, and output token usage.
 
 On 2026-11-20, the previous `google/gemma-4-26b-a4b` configuration answered plain

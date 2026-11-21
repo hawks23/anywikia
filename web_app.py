@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 import httpx
 from local_rdf import SPARQL_ENDPOINT
+from functions.similar_names import add_name_suggestions
 
 ROOT = Path(__file__).resolve().parent
 
@@ -76,7 +77,7 @@ except Exception as error:
 print(result.model_dump_json())
 """
     result = subprocess.run([sys.executable, "-u", "-c", runner], input=text, text=True,
-                            stdout=subprocess.PIPE, cwd=ROOT, timeout=180)
+                            stdout=subprocess.PIPE, cwd=ROOT, timeout=300)
     if result.returncode:
         try:
             detail = json.loads(result.stdout).get("error")
@@ -129,11 +130,11 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length))
             if not isinstance(payload, dict):
                 raise ValueError("Expected a JSON object")
-            self.send(200, extract(payload.get("text")))
+            self.send(200, add_name_suggestions(extract(payload.get("text"))))
         except (ValueError, UnicodeDecodeError) as error:
             self.send(400, {"error": str(error)})
         except subprocess.TimeoutExpired:
-            self.send(504, {"error": "Pipeline exceeded three minutes. Try a shorter passage."})
+            self.send(504, {"error": "Pipeline exceeded five minutes. Try a shorter passage."})
 
 
 if __name__ == "__main__":

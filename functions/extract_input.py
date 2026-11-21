@@ -31,8 +31,8 @@ def structured_completion(messages, schema=Extraction):
             "Set CAMPUSAI_API_KEY and CAMPUSAI_MODEL in .env."
         )
 
-    timeout = float(os.getenv("LLM_TIMEOUT", "60"))
-    max_tokens = int(os.getenv("LLM_MAX_TOKENS", "4096"))
+    timeout = float(os.getenv("LLM_TIMEOUT", "180"))
+    max_tokens = int(os.getenv("LLM_MAX_TOKENS", "8192"))
     if timeout <= 0 or max_tokens <= 0:
         raise ValueError("LLM_TIMEOUT and LLM_MAX_TOKENS must be positive.")
     report(f"CampusAI model: {model}; timeout: {timeout:g}s; output limit: {max_tokens} tokens")

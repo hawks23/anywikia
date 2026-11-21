@@ -1,40 +1,42 @@
 # Anywikia PoC limitations
 
-Planned PoC: extract keyboard facts from pasted text, resolve them against the
-local Keyboards Wikibase snapshot, compare existing statements, review proposed
-additions, and export approved additions to a separate local RDF file.
-This describes the intended scope, not completed functionality.
+Implemented: grouped keyboard extraction, local ID resolution, website fuzzy-name
+suggestions, editable review drafts, direct RDF value comparisons and JSON export.
+The CLI extracts/resolves; the website adds suggestions and comparison. Neither
+writes RDF. Approved RDF export and actual entity creation remain future work.
 
 ## Follow-up checklist
 
-- [ ] **Limited properties:** initially support manufacturer, keys, width, height,
-  and weight. Extend the local property catalog and validation rules later.
-- [ ] **Existing entities only:** unknown keyboards or manufacturers remain
-  unresolved. Add a reviewed entity-creation workflow later.
-- [ ] **Text input only:** add website extraction, PDF tables, and OCR after the
-  basic pipeline works.
-- [ ] **Local snapshot only:** absence locally does not prove absence online.
-  Add snapshot freshness tracking and recheck the destination before publishing.
-- [ ] **Evidence is not truth:** preserve quotations and source locations, but
-  separately assess source reliability and whether the quotation supports the claim.
-- [ ] **Ambiguous names:** compare candidate entities and model variants instead
-  of accepting the first search result; retain unresolved cases for review.
-- [ ] **Complex statements:** extend quantity normalization and support date
-  precision, qualifiers, uncertainty, and multiple or conflicting sources.
-- [ ] **Local additions only:** live Wikibase/Wikidata publishing needs explicit
-  destination mapping, statement/reference conversion, and duplicate checks.
-- [ ] **Small evaluation:** use manually checked examples and a test copy with
-  known facts removed; later evaluate varied, unseen sources and report errors.
+- [ ] **Scope:** 23 curated keyboard properties from a 30-property catalog.
+  Manufacturers are linked values, not independently extracted top-level records.
+- [ ] **Entity identity:** exact names/aliases and manual fuzzy suggestions do not
+  prove identity. Add contextual/type checks; do not merge variants automatically.
+- [ ] **Fuzzy candidate coverage:** only items with P1 (number of keys) are included.
+  Missing P1 excludes a keyboard. Only distance < 3 and the best three distinct
+  QIDs are returned; short aliases and near-identical model names need review.
+- [ ] **Cache lifecycle:** five-minute lazy server-memory cache, one per process.
+  Large datasets need indexed candidate retrieval. Future real creation must
+  update/invalidate a loaded cache after RDF changes become queryable in QLever.
+- [ ] **Unverified supporting context:** model-provided sentences are not checked
+  for exact wording or semantic support. Pydantic validates structure, not truth.
+- [ ] **Comparison:** direct values only; no unit conversion, qualifiers, ranks,
+  cardinality reasoning or reference comparison. Unitless quantity metadata can
+  make comparisons uncertain. A differing value is a review flag, not proof of error.
+- [ ] **Editing:** changed entity values are not re-resolved automatically. Edits
+  remain drafts; no persistent approval, replacement, conflict resolution or writes.
+- [ ] **Creation:** ENTITY ADDED ! is a demo only. No new QID or RDF statement is
+  generated. Preserve proposals and the original snapshot when implementing writes.
+- [ ] **Persistence:** browser refresh loses drafts; export saves original output
+  plus review JSON, not approved RDF. Importing review exports is not implemented.
+- [ ] **Input/service limits:** pasted text only; website input limit is 20,000
+  characters. CampusAI output limit defaults to 8192 tokens, HTTP timeout to 180
+  seconds, and web subprocess limit to 300 seconds. No automatic provider retries.
+- [ ] **Deployment:** local loopback development server, not a public multiuser app.
+- [ ] **Snapshot:** absence locally does not establish absence online. Index rebuilds
+  are required after editing RDF files; local and public Wikidata IDs differ.
+- [ ] **Evaluation:** tests and smoke checks do not measure extraction accuracy.
+  Evaluate unseen passages, wrong candidates and repeated/conflicting statements.
 
-## Implementation reminders
-
-- The handler now uses local ID resolution. Add existing-statement comparison
-  and reviewed export next. Server checks are in `functions/qlever_checks.py`.
-- Local Keyboards IDs and public Wikidata IDs are different namespaces.
-- Pydantic validates structure, not factual correctness. Keep extraction,
-  resolution, evidence checks, comparison, and approval as separate stages.
-- Represent graph links with entity references. If traversing the graph, track
-  visited nodes and bound depth; cycles are possible even though none were found
-  in the inspected snapshot.
-- Verify that approved additions appear in the demo graph and are not proposed
-  again when the same input is processed twice.
+Future graph traversal must track visited IDs and impose depth limits. RDF can
+contain cycles; it has no fixed hierarchy. Real population should be tested on a
+copy, including repeat processing to ensure duplicate statements are not added.
