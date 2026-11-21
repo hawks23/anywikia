@@ -34,7 +34,7 @@ read-only comparison and draft-review workflow below. The two server checks are 
 
 The raw extraction and resolved output are separate typed grouped models.
 The handler never calls to_claims. Exact case-insensitive label/alias retrieval
-is retained; fuzzy similarity remains unimplemented. Browser comparison does not
+is retained; the website adds manually confirmed fuzzy suggestions. Browser comparison does not
 write, replace, or approve RDF statements.
 
 ## Website review workflow
@@ -44,7 +44,12 @@ Start `python web_app.py` and open http://localhost:8000 after starting QLever.
 ```mermaid
 flowchart TD
     A[Source text in browser] --> B[Local web server runs grouped pipeline in subprocess]
-    B --> C[Display keyboards, claims and ID candidates]
+    B --> S{Exact keyboard lookup returned no match?}
+    S -- Yes --> T[Load or reuse lazy five-minute names cache]
+    T --> U[Top three distinct QIDs with edit distance below 3]
+    U --> C[Match keyboard first: inspect or confirm candidate]
+    S -- No --> C
+    T -- Query failure --> C
     C --> D{Unique or manually confirmed keyboard QID?}
     D -- Yes --> E[Fetch direct RDF properties and available quantity units]
     E --> F[Compare each claim by mapped PID]
@@ -52,10 +57,13 @@ flowchart TD
     E -- Request failure --> H[Show error and retry; do not classify as new]
     D -- No --> I[Review candidates or unresolved name]
     I --> D
-    C --> J[Edit review draft; preserve original extraction]
+    I --> X[Choose new entity demo: clear QID, keep editable claims; no RDF write]
+    C --> J[Confirm identity; update reviewed name and QID; edit compact claims]
     J --> D
     G --> K[Export original result and review draft as JSON]
     I --> K
+    C -- Choose new instead --> X
+    X --> K
 ```
 
 Entity values compare resolved QIDs, including IDs found through aliases. Numeric
@@ -64,3 +72,9 @@ and property cardinality are not handled. Supporting context is model-provided
 and remains unverified. Manual match confirmation and the add-entity demo affect
 only the browser draft. Persistent approval, replacement, creation, and RDF writes
 remain future work.
+
+The cache is loaded only when needed; candidate keyboards currently require P1.
+Confirmation preserves the source name and original extraction, collapses choices
+and refreshes comparisons. The new-entity demo remains available after confirmation.
+
+![Website review workflow](mermaid-diagram.png)
