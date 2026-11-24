@@ -2,7 +2,9 @@
 
 Each step lives in functions/. This module coordinates them and handles CLI
 input/errors. The graph supplies IDs only; it never supplies replacement fact
-values. No statements are written. Run `python handler.py "Source passage"`.
+values. The extraction CLI is read-only. graph_action dispatches separately
+confirmed writes, queries and rebuilds to functions/. Run
+`python handler.py "Source passage"` or `python handler.py --setup-graph`.
 """
 import argparse
 
@@ -56,7 +58,12 @@ def main():
     parser.add_argument("text", nargs="?", default=SAMPLE_TEXT)
     parser.add_argument("--json", action="store_true", help="Print machine-readable records")
     parser.add_argument("--quiet", action="store_true", help="Hide progress; errors still appear")
+    parser.add_argument("--setup-graph", action="store_true", help="Initialize/start the persistent local working graph")
     args = parser.parse_args()
+    if args.setup_graph:
+        import json
+        print(json.dumps(graph_action("setup"), indent=2))
+        return
     configure_progress(quiet=args.quiet)
     try:
         facts = run_pipeline(args.text)
@@ -65,6 +72,26 @@ def main():
     # 4. Presentation is separate from extraction and resolution.
     report("Printing JSON results" if args.json else "Printing results")
     print_results(facts, as_json=args.json)
+
+
+def graph_action(action, payload=None):
+    """Orchestrate graph functions for the web adapter and setup CLI."""
+    from functions import rdf_service
+    payload = payload or {}
+    routes = {
+        "setup": lambda: rdf_service.initialize_graph(),
+        "query-ui": lambda: rdf_service.initialize_query_ui(payload.get("port", 8178)),
+        "status": lambda: rdf_service.status(),
+        "preview": lambda: rdf_service.preview_change(payload),
+        "confirm": lambda: rdf_service.confirm_change(payload),
+        "inspect": lambda: rdf_service.inspect_graph_entity(payload.get("entity_id")),
+        "search": lambda: rdf_service.search_graph_entities(payload.get("text")),
+        "verify": lambda: rdf_service.verify_graph(payload),
+        "rebuild": lambda: rdf_service.rebuild_graph(payload),
+    }
+    if action not in routes:
+        raise ValueError("Unknown graph action.")
+    return routes[action]()
 
 
 if __name__ == "__main__":

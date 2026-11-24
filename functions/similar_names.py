@@ -1,8 +1,8 @@
 """Suggest up to three keyboard QIDs after exact name lookup fails.
 
 The website process owns this lazy, five-minute, in-memory cache. Nothing is
-saved to disk. P1 (number of keys) identifies keyboard candidates in this PoC;
-records without P1 are excluded, as classification is incomplete in the snapshot.
+saved to disk. Candidates have P1 (number of keys) or the application Keyboard
+type, so newly created keyboards remain discoverable without a key count.
 Suggestions never assign an ID: the user must inspect and confirm a candidate.
 """
 import logging
@@ -43,7 +43,8 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX kbt: <https://keyboards.wikibase.cloud/prop/direct/>
 SELECT DISTINCT ?entity ?name ?label WHERE {
- ?entity kbt:P1 ?keys ; (rdfs:label|skos:altLabel) ?name .
+ { ?entity kbt:P1 ?keys } UNION { ?entity a <urn:anywikia:Keyboard> }
+ ?entity (rdfs:label|skos:altLabel) ?name .
  FILTER(STRSTARTS(STR(?entity), "https://keyboards.wikibase.cloud/entity/Q"))
  FILTER(LANG(?name) IN ("en", "da", ""))
  OPTIONAL { ?entity rdfs:label ?label . FILTER(LANG(?label) = "en") }

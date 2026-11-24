@@ -1,0 +1,36 @@
+const assert = require('node:assert/strict');
+const {planClaimChange:plan,friendlyUnit} = require('../frontend/review-plan.js');
+const prop = {property_id:'P1',label:'keys'};
+const old = {statement:'stmt-1',value:'88',replaceable:true};
+assert.deepEqual(plan(prop,{value:'90'},[old],false),{action:'replace',statement:'stmt-1',oldValue:'88'});
+assert.deepEqual(plan(prop,{value:'61'},[],false),{action:'add',statement:null});
+assert.deepEqual(plan(prop,{value:'61'},[old],true),{action:'add',statement:null});
+assert.deepEqual(plan(prop,{value:'90',save_mode:'add'},[old],false),{action:'add',statement:null});
+assert.throws(()=>plan(prop,{},[old,{...old,statement:'stmt-2'}],false),/several/);
+assert.equal(plan(prop,{save_mode:'replace',statement:'stmt-2'},[old,{...old,statement:'stmt-2'}],false).statement,'stmt-2');
+assert.throws(()=>plan(prop,{save_mode:'replace',statement:'foreign'},[old],false),/replacement/);
+assert.throws(()=>plan(prop,{},[{...old,replaceable:false}],false),/protected/);
+assert.throws(()=>plan(prop,{save_mode:'replace',statement:'stmt-1'},[{...old,replaceable:false}],false),/protected/);
+assert.equal(friendlyUnit('http://www.wikidata.org/entity/Q199'),'');
+assert.equal(friendlyUnit('http://www.wikidata.org/entity/Q4916'),'EUR');
+console.log('11 review planning checks passed');
+
+const {groupPropertyChoices} = require('../frontend/review-plan.js');
+const widths={property_id:'P2',label:'width',claims:[{value:'1385',unit:'mm'},{value:'138.5',unit:'cm'}]};
+groupPropertyChoices(widths);
+assert.equal(widths.claims.length,1);
+assert.equal(widths.extracted_choices.length,2);
+assert.equal(widths.claims[0].value,'');
+assert.equal(widths.choice_resolved,false);
+assert.throws(()=>plan(widths,widths.claims[0],[],true),/duplicate/);
+widths.choice_resolved=true; widths.claims[0].value='140';
+assert.equal(plan(widths,widths.claims[0],[],true).action,'add');
+groupPropertyChoices(widths); assert.equal(widths.claims[0].value,'140');
+console.log('Duplicate property selection checks passed');
+
+const {comparisonEntityId} = require('../frontend/review-plan.js');
+assert.equal(comparisonEntityId({subject_id:'Q1'}),null);
+assert.equal(comparisonEntityId({review_match:'Q1',confirmed:false}),null);
+assert.equal(comparisonEntityId({review_match:'Q1',confirmed:true}),'Q1');
+assert.equal(comparisonEntityId({review_match:'Q1',confirmed:true,demo_added:true}),null);
+console.log('Manual confirmation comparison gate checks passed');

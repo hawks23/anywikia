@@ -1,7 +1,7 @@
 """Local review UI: python web_app.py, then visit http://localhost:8000.
 
-Runs the unchanged CLI pipeline in an isolated subprocess. Browser edits are
-review drafts only. No endpoint writes RDF or creates entities. Bind locally;
+Runs the CLI pipeline in an isolated subprocess and routes reviewed writes
+through handler.graph_action. Bind locally;
 this development server is not intended for public deployment.
 """
 import argparse
@@ -9,6 +9,7 @@ import json
 import re
 import subprocess
 import sys
+import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -18,6 +19,12 @@ from local_rdf import SPARQL_ENDPOINT
 from functions.similar_names import add_name_suggestions
 
 ROOT = Path(__file__).resolve().parent
+WRITE_CSRF = secrets.token_urlsafe(32)
+
+
+def graph_action(action, payload=None):
+    from handler import graph_action as dispatch
+    return dispatch(action, payload)
 
 
 def inspect_entity(qid):
@@ -88,7 +95,7 @@ print(result.model_dump_json())
 
 
 class Handler(BaseHTTPRequestHandler):
-    """Serve a fixed asset list and two read-only application endpoints."""
+    """HTTP adapter; graph functionality is orchestrated by handler.py."""
     def send(self, status, body, mime="application/json"):
         data = json.dumps(body).encode() if mime == "application/json" else body
         self.send_response(status)
@@ -100,12 +107,18 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        if not self.valid_host():
+            return self.send(403, {"error": "Localhost access only."})
         path = urlparse(self.path).path
         assets = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/javascript"), "/comparison.js": ("comparison.js", "text/javascript"), "/style.css": ("style.css", "text/css")}
+        assets["/review-plan.js"] = ("review-plan.js", "text/javascript")
+        assets["/rdf-review.js"] = ("rdf-review.js", "text/javascript")
         try:
             if path in assets:
                 name, mime = assets[path]
                 return self.send(200, (ROOT / "frontend" / name).read_bytes(), mime)
+            if path == "/api/graph/status":
+                return self.send(200, {**graph_action("status"), "csrf": WRITE_CSRF})
             if path.startswith("/api/entities/"):
                 return self.send(200, inspect_entity(path.rsplit("/", 1)[-1]))
             self.send(404, {"error": "Not found"})
@@ -113,28 +126,42 @@ class Handler(BaseHTTPRequestHandler):
             self.send(400, {"error": str(error)})
         except httpx.HTTPError:
             self.send(502, {"error": "Cannot read QLever. Check the local server and retry."})
+        except (RuntimeError, OSError) as error:
+            self.send(503, {"error": str(error)})
+
+    def valid_host(self):
+        return self.headers.get("Host", "") in {f"localhost:{self.server.server_port}", f"127.0.0.1:{self.server.server_port}"}
 
     def do_POST(self):
         # Require same-origin JSON; other websites cannot trigger LLM requests.
         origin = self.headers.get("Origin")
-        if origin and origin != "http://" + self.headers.get("Host", ""):
+        if not self.valid_host() or (origin and origin != "http://" + self.headers.get("Host", "")):
             return self.send(403, {"error": "Cross-origin requests are not allowed."})
-        if self.path != "/api/extract":
+        graph_routes = {"/api/graph/" + action: action for action in ("preview", "confirm", "inspect", "search", "verify", "rebuild")}
+        if self.path != "/api/extract" and self.path not in graph_routes:
             return self.send(404, {"error": "Not found"})
         try:
             if self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ValueError("Expected JSON")
             length = int(self.headers.get("Content-Length", "0"))
-            if not 0 < length <= 100000:
+            if not 0 < length <= 500000:
                 raise ValueError("Request is empty or too large")
             payload = json.loads(self.rfile.read(length))
             if not isinstance(payload, dict):
                 raise ValueError("Expected a JSON object")
+            if self.path in graph_routes:
+                if not secrets.compare_digest(self.headers.get("X-Anywikia-CSRF", ""), WRITE_CSRF):
+                    return self.send(403, {"error": "Reload the page before using graph actions."})
+                return self.send(200, graph_action(graph_routes[self.path], payload))
             self.send(200, add_name_suggestions(extract(payload.get("text"))))
         except (ValueError, UnicodeDecodeError) as error:
             self.send(400, {"error": str(error)})
         except subprocess.TimeoutExpired:
             self.send(504, {"error": "Pipeline exceeded five minutes. Try a shorter passage."})
+        except httpx.HTTPError:
+            self.send(502, {"error": "Cannot reach the working QLever graph. Check its status and retry."})
+        except (RuntimeError, OSError) as error:
+            self.send(503, {"error": str(error)})
 
 
 if __name__ == "__main__":
