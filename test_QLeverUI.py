@@ -18,8 +18,9 @@ def main():
     try:
         result = graph_action("query-ui", {"port": args.ui_port})
     except Exception as error:
+        alternative_port = args.ui_port + 1 if 1024 <= args.ui_port < 65535 else 8178
         raise SystemExit(
-            f"Could not start QLever UI: {error}\nCheck Docker Desktop. If the UI port is occupied, retry with --ui-port 8179."
+            f"Could not start QLever UI: {error}\nCheck Docker Desktop. If the UI port is occupied, choose a free port, for example --ui-port {alternative_port}."
         ) from error
     print(f"\nQLever UI ready: {result['url']}\nQuery endpoint: {result['endpoint']}")
     print(
