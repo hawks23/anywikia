@@ -1,89 +1,85 @@
-# Current Anywikia workflow
+# Implemented workflow
 
-Run `python tests/start_qlever.py` before `python handler.py "Source text"`.
-The diagram describes implemented behavior, not the future population workflow.
+The source diagrams below describe the current application. Original project
+proposals are historical plans. See [how-to-run.md](how-to-run.md) for commands.
 
-```mermaid
-flowchart TD
-    A[Source text and CLI options] --> B[handler.py]
-    B --> C[check_server: execute a minimal SPARQL query]
-    C --> D[check_dataset: verify Keyboards item and property definitions]
-    C -- Failure --> Z[Report error and stop before LLM request]
-    D -- Failure --> Z
-    D --> E[extract_entities: CampusAI returns typed claims grouped by keyboard and property]
-    E --> F[Keep supporting sentences for human review]
-    E -- API or validation failure --> Z
-    F --> P[resolve_extraction: retain grouped models and validate catalog mappings]
-    P --> G[For each keyboard: resolve subject once]
-    G --> H[Attach mapped PID and catalog type to each property group]
-    H --> I{Property expects an entity value?}
-    I -- Yes --> J[Look up the extracted value name]
-    I -- No --> K[Keep literal value and unit unchanged]
-    J --> L[Attach unique IDs; warn for missing or ambiguous matches]
-    K --> L
-    G -- Local lookup failure --> M[Preserve grouped source claims and any already-resolved IDs; add warning]
-    L --> N[Collect grouped keyboards, properties, claims and matching candidates]
-    M --> N
-    N --> O[print_results: grouped readable output or JSON]
-```
-
-The local graph supplies matching IDs, not fact values. Supporting sentences are not checked for exact wording
-or semantic support. The CLI does not compare existing values or modify RDF. The website adds the
-read-only comparison and draft-review workflow below. The two server checks are in
-`functions/qlever_checks.py`; every step module can also be executed independently.
-
-The raw extraction and resolved output are separate typed grouped models.
-The handler never calls to_claims. Exact case-insensitive label/alias retrieval
-is retained; the website adds manually confirmed fuzzy suggestions. Browser comparison does not
-write, replace, or approve RDF statements.
-
-## Website review workflow
-
-Start `python web_app.py` and open http://localhost:8000 after starting QLever.
+## User workflow
 
 ```mermaid
 flowchart TD
-    A[Source text in browser] --> B[Local web server runs grouped pipeline in subprocess]
-    B --> S{Exact keyboard lookup returned no match?}
-    S -- Yes --> T[Load or reuse lazy five-minute names cache]
-    T --> U[Top three distinct QIDs with edit distance below 3]
-    U --> C[Match keyboard first: inspect or confirm candidate]
-    S -- No --> C
-    T -- Query failure --> C
-    C --> D{Unique or manually confirmed keyboard QID?}
-    D -- Yes --> E[Fetch direct RDF properties and available quantity units]
-    E --> F[Compare each claim by mapped PID]
-    F --> G[Show existing, differing, new or uncertain value]
-    E -- Request failure --> H[Show error and retry; do not classify as new]
-    D -- No --> I[Review candidates or unresolved name]
-    I --> D
-    I --> X[Choose new entity demo: clear QID, keep editable claims; no RDF write]
-    C --> J[Confirm identity; update reviewed name and QID; edit compact claims]
-    J --> D
-    G --> K[Export original result and review draft as JSON]
-    I --> K
-    C -- Choose new instead --> X
-    X --> K
+    A[Paste keyboard text] --> B[Extract supported properties with CampusAI]
+    B --> C[Show possible local matches and original evidence]
+    C --> D{User confirms identity}
+    D -->|Existing keyboard| E[Now editing on QID; enable RDF comparisons]
+    D -->|New keyboard| F[New entity draft; no QID allocated yet]
+    E --> G[Edit or select properties; resolve duplicate values]
+    F --> G
+    G --> H[Apply changes or Create entity]
+    H --> I[Server validates datatype, units and current graph revision]
+    I --> J[User confirms property and value summary]
+    J --> K[SPARQL Update with persistent operation ID]
+    K --> L[Read back values and report verification status]
+    L --> M[Query saved values with readable labels]
+    L -->|Unknown outcome| R[Check previous update; retain newer draft edits]
+    R --> L
+    M --> N[Optional: Save to keyboards.nt and rebuild index]
+    N --> O[Lock writes; export live graph; build staged index]
+    O --> P[Verify staged graph; switch server; publish source RDF]
+    P --> Q[Query fresh index; previous generation retained]
+    O -->|Failure before switch| S[Keep current graph and source]
+    P -->|Switch failure| T[Attempt rollback; setup recovers interrupted rebuild]
 ```
 
-Entity values compare resolved QIDs, including IDs found through aliases. Numeric
-comparisons require compatible recognized units; conversion, qualifiers, ranks,
-and property cardinality are not handled. Supporting context is model-provided
-and remains unverified. Manual match confirmation and the add-entity demo affect
-only the browser draft. Persistent approval, replacement, creation, and RDF writes
-remain future work.
+![Review, save and rebuild workflow](mermaid-diagram.png)
 
-The cache is loaded only when needed; candidate keyboards currently require P1.
-Confirmation preserves the source name and original extraction, collapses choices
-and refreshes comparisons. The new-entity demo remains available after confirmation.
+The PNG is a compact companion rendering of the same main steps; the Mermaid
+source above includes the branch and recovery detail. New records receive local
+QIDs, labels and statements only on confirmed save. A price creates a linked
+offer with P24 pointing to the keyboard and P25 carrying amount/currency.
 
-Review now includes P25 price with an application-defined DKK/EUR/USD/GBP dropdown.
-Count units are optional; populated measurements require units and prices require
-a listed currency before the new-entity demo can proceed. Draft export remains
-available for incomplete reviews. Existing-price comparisons require currency and
-offer-context review. Future RDF write handlers must call `validate_units_for_rdf`
-before mutation; none currently exists. Explicit polyphony compounds are normalized
-inside extraction validation. These rules refine existing extraction/review nodes;
-the diagram topology remains unchanged.
+## Programmer workflow
 
-![Website review workflow](mermaid-diagram.png)
+```mermaid
+flowchart LR
+    WEB[web_app.py HTTP adapter] --> HANDLER[handler.py graph_action]
+    SETUP[tests/start_qlever.py] --> HANDLER
+    UI[test_QLeverUI.py] --> HANDLER
+    HANDLER --> SERVICE[functions/rdf_service.py]
+    SERVICE --> MODEL[functions/rdf_models.py: catalog and validation]
+    SERVICE --> STORE[functions/rdf_store.py: preview, update, verification]
+    SERVICE --> RUNTIME[functions/qlever_runtime.py: Docker and generations]
+    SERVICE --> QUERYUI[functions/qlever_ui.py: query editor]
+    STORE --> MODEL
+    STORE --> RUNTIME
+    QUERYUI --> RUNTIME
+    RUNTIME --> GRAPH[QLever 7072: base index plus persistent updates]
+    RUNTIME --> FILE[keyboards.nt: exported on rebuild]
+```
+
+The extraction subprocess calls `handler.run_pipeline`: check server and dataset,
+extract typed grouped facts, resolve local IDs, retain unresolved facts with
+warnings, and serialize results. The CLI prints those results without writes.
+The website adds lazy fuzzy suggestions and review; comparison is gated on manual
+identity confirmation. Server-side graph operations remain in functions/.
+
+Previews are stored server-side with exact RDF deltas, graph revision and operation
+ID. Confirmation rejects stale/expired previews; operation markers make retries
+idempotent. Read-back compares numeric decimal values and RDF-equivalent strings.
+A recorded operation with different current triples is reported separately from
+unknown outcomes and fully verified writes.
+
+## Persistence boundaries
+
+```mermaid
+flowchart LR
+    SAVE[Confirmed save] --> LIVE[Live QLever graph plus update log]
+    LIVE --> QUERY[Immediately visible to queries]
+    LIVE --> EXPORT[Explicit export and rebuild]
+    EXPORT --> NT[keyboards-index/keyboards.nt]
+    EXPORT --> INDEX[Fresh verified index generation]
+    NT --> GIT[Requested commit and push includes exported RDF]
+```
+
+No automatic Git push occurs. Runtime state and credentials remain ignored.
+The managed graph and the managed query UI use 7072 and 8178 respectively; the
+website uses 8000. Legacy Qleverfile port 7071 does not configure these helpers.

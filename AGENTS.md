@@ -9,3 +9,7 @@ Before pushing, review and complete applicable checklist items against the final
 diff. Keep `how-to-run.md` as the canonical run guide. The obsolete `how-to-run.txt` was removed.
 Preserve proposal documents and RDF/index files. These instructions do not require
 extra user approval and do not authorize an otherwise unrequested push.
+
+When the user requests a commit/push, include their exported changes to
+keyboards-index/keyboards.nt alongside the code/docs. Do not automatically commit
+or push from the application. Live .anywikia state and credentials stay ignored.

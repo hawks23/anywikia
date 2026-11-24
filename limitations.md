@@ -1,53 +1,55 @@
-# Anywikia PoC limitations
+# Current limitations
 
-Implemented: grouped keyboard extraction, local ID resolution, website fuzzy-name
-suggestions, editable review drafts, direct RDF value comparisons and JSON export.
-The CLI extracts/resolves; the website adds suggestions and comparison. Neither
-writes RDF. Approved RDF export and actual entity creation remain future work.
+Anywikia implements reviewed writes and new entity creation, in addition to
+extraction, resolution, comparisons, persistence and export/rebuild.
 
-## Follow-up checklist
+- **Scope:** 24 curated keyboard properties from a 30-property catalog. Seller,
+  date, question and stored-query metadata are not editable through the catalog.
+  Manufacturers and other relationship targets must already exist locally.
+- **Identity:** exact names/aliases and up to three fuzzy suggestions (distance
+  below 3) do not prove identity. Creation checks exact existing names/aliases,
+  but cannot guarantee semantic uniqueness. Users confirm matches and creation.
+- **Candidate cache:** five-minute lazy in-process cache, invalidated after writes
+  and rebuild. Candidates have P1 or the application's Keyboard type; other
+  incompletely classified keyboards may be missed.
+- **Extraction:** supporting sentences are unverified model output. Schema checks
+  establish structure, not factual accuracy. English polyphony compounds are
+  handled, but this is not a general number parser. Duplicate extracted values
+  are alternatives in one editor, not multiple automatic writes.
+- **Comparison:** no unit/currency conversion or general qualifier/reference/rank
+  reasoning. Q199 is unitless and leaves physical measurements ambiguous.
+- **Writes:** selected properties must pass actual graph/catalog datatype checks.
+  Qualified, non-normal-ranked or ambiguous-quantity statements cannot be replaced.
+  One explicit statement is replaced; unselected statements remain. Shared old
+  quantity/reference nodes are retained, so orphan cleanup is not implemented.
+- **Price:** DKK/EUR/USD/GBP are application choices, not RDF currency constraints.
+  New price entries create linked offer entities. Seller/date may remain only in
+  source evidence; no complete commercial offer extraction workflow exists.
+- **Validation:** finite numeric values, integer counts, supported units, local
+  entity references, URL/ID/media syntax. External existence and truth are not
+  verified. New top-level entities require a name and at least one selected value.
+- **Concurrency:** whole-graph snapshot/revision checks and a process/file lock
+  coordinate application writers. External SPARQL writers bypass that lock and
+  are unsupported. Snapshots are limited to 100,000 triples.
+- **Persistence:** live updates are in QLever's persistent log until export/rebuild.
+  Git carries only committed files, not ignored .anywikia state. Browser refresh
+  loses the draft; JSON export is available but import is not implemented.
+- **Verification:** equivalent decimals/plain strings are normalized for read-back.
+  A saved operation marker prevents duplicate retries. Recorded-but-unverified
+  results need inspection; a marker alone is not proof every expected triple is
+  still present. Diagnostics record mismatched predicates or query error classes.
+- **Rebuild:** staged index verification and rollback retain old generations and
+  source backups; storage is not automatically reclaimed. Switching briefly
+  interrupts queries. Rerun setup after an interrupted rebuild. Image upgrades
+  and moving an existing managed runtime across OS paths are not automatic.
+- **Input/services:** pasted text, 20,000 characters; CampusAI output defaults to
+  8192 tokens, request timeout 180 seconds, subprocess limit 300 seconds. No
+  automatic provider retries or extraction-accuracy benchmark is supplied.
+- **Deployment:** loopback development server with local request protections,
+  not a hardened public multiuser service. Keep API keys and access tokens private.
+- **Validation evidence:** offline tests pass; user testing has shown live changes
+  and exported RDF. Automated end-to-end browser, Docker restart/persistence and
+  full rebuild compatibility checks have not all been run in this environment.
 
-- [ ] **Scope:** 24 curated keyboard properties from a 30-property catalog, including price.
-  Manufacturers are linked values, not independently extracted top-level records.
-- [ ] **Price:** DKK/EUR/USD/GBP are application-defined currency choices, not
-  RDF-declared constraints. Source prices retain seller/date context in evidence;
-  separate offer records are not extracted. Existing-price comparison remains
-  uncertain pending currency and offer handling. No currency conversion or guessing.
-- [ ] **Units:** count units are optional; populated measurements require units,
-  and prices require a listed currency. Inline errors block the new-entity demo,
-  not draft export. Future write endpoints must invoke `validate_units_for_rdf`;
-  this checks presence/currency membership, not full unit compatibility or truth.
-- [ ] **Polyphony parsing:** explicit English numeric/count compounds are normalized
-  without changing evidence. Ambiguous expressions and conflicting units remain
-  invalid; this is not a general natural-language number parser.
-- [ ] **Entity identity:** exact names/aliases and manual fuzzy suggestions do not
-  prove identity. Add contextual/type checks; do not merge variants automatically.
-- [ ] **Fuzzy candidate coverage:** only items with P1 (number of keys) are included.
-  Missing P1 excludes a keyboard. Only distance < 3 and the best three distinct
-  QIDs are returned; short aliases and near-identical model names need review.
-- [ ] **Cache lifecycle:** five-minute lazy server-memory cache, one per process.
-  Large datasets need indexed candidate retrieval. Future real creation must
-  update/invalidate a loaded cache after RDF changes become queryable in QLever.
-- [ ] **Unverified supporting context:** model-provided sentences are not checked
-  for exact wording or semantic support. Pydantic validates structure, not truth.
-- [ ] **Comparison:** direct values only; no unit conversion, qualifiers, ranks,
-  cardinality reasoning or reference comparison. Unitless quantity metadata can
-  make comparisons uncertain. A differing value is a review flag, not proof of error.
-- [ ] **Editing:** changed entity values are not re-resolved automatically. Edits
-  remain drafts; no persistent approval, replacement, conflict resolution or writes.
-- [ ] **Creation:** ENTITY ADDED ! is a demo only. No new QID or RDF statement is
-  generated. Preserve proposals and the original snapshot when implementing writes.
-- [ ] **Persistence:** browser refresh loses drafts; export saves original output
-  plus review JSON, not approved RDF. Importing review exports is not implemented.
-- [ ] **Input/service limits:** pasted text only; website input limit is 20,000
-  characters. CampusAI output limit defaults to 8192 tokens, HTTP timeout to 180
-  seconds, and web subprocess limit to 300 seconds. No automatic provider retries.
-- [ ] **Deployment:** local loopback development server, not a public multiuser app.
-- [ ] **Snapshot:** absence locally does not establish absence online. Index rebuilds
-  are required after editing RDF files; local and public Wikidata IDs differ.
-- [ ] **Evaluation:** tests and smoke checks do not measure extraction accuracy.
-  Evaluate unseen passages, wrong candidates and repeated/conflicting statements.
-
-Future graph traversal must track visited IDs and impose depth limits. RDF can
-contain cycles; it has no fixed hierarchy. Real population should be tested on a
-copy, including repeat processing to ensure duplicate statements are not added.
+Keep original proposals as historical design documents. The exported dataset
+contains user test edits and should not be mistaken for a pristine source dump.

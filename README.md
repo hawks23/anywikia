@@ -1,514 +1,180 @@
 # Anywikia
 
-Extract musical-keyboard facts from source text with CampusAI, attach matching
-local Keyboards Wikibase IDs, and display the results with LLM-selected supporting context.
-The local RDF informed the supported property catalog and supplies matching IDs
-at runtime; it never replaces extracted values or units.
-The CLI pipeline is read-only. The website adds stored-value comparison and
-editable review drafts; approved RDF updates and population remain future work. See [workflow.md](workflow.md) for the current flowchart and
-[limitations.md](limitations.md) for follow-up work.
+Extract musical-keyboard facts from text with CampusAI, review them against a local
+Keyboards Wikibase graph, and save explicitly confirmed changes to QLever.
 
-## Structure
+The CLI extraction pipeline is read-only. The website adds human confirmation,
+property editing, new entities, persistent RDF writes, verification queries, and
+export/rebuild of `keyboards.nt`. The graph supplies matching IDs; it does not
+replace extracted facts with stored values.
 
-```text
-handler.py                      # Main entry point and step orchestration
-web_app.py                      # Local web server and read-only RDF inspection
-frontend/                       # Browser review UI and value comparison rules
-functions/
-  extract_input.py              # LLM extraction and supporting context
-  pydantic_models.py            # Typed extraction and catalog validation
-  resolve_local.py              # Grouped QID resolution and mapped PIDs
-  resolved_models.py            # Application-owned grouped result models
-  similar_names.py              # Lazy server cache and fuzzy name suggestions
-  qlever_checks.py              # Server and dataset checks
-  progress.py                   # Progress messages and elapsed-time reporting
-  display_results.py            # Readable or JSON output
-property_list.json              # Catalog of 30 local RDF property definitions
-local_rdf.py                    # Shared endpoint and file paths
-tests/start_qlever.py            # Docker startup and readiness
-keyboards-index/                # RDF, QLever config, generated indexes and logs
-workflow.md                     # Mermaid flowchart
-tests/test_extraction_pipeline.py # Offline pipeline regression tests
-tests/test_pydantic_models.py    # Typed models and catalog consistency tests
-```
+## Install and run
 
-The old app.py entry point, root extraction/resolution modules, public Wikidata
-resolver, experimental try.py, and old test.py were removed. Their active roles
-are now covered by the handler and functions package. Proposal files and RDF/index
-files are retained.
+Prerequisite installers: [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/)
+and, optionally, [uv for Python installation](https://docs.astral.sh/uv/getting-started/installation/).
 
-## Setup in Ubuntu / WSL
-
-Verified environment: Ubuntu-22.04, Python 3.13, Docker Desktop with Ubuntu WSL
-integration enabled. Keep the checkout in the Linux filesystem, e.g. ~/anywikia.
-Start Docker Desktop and wait until `docker info` succeeds.
+Recommended: Ubuntu/WSL, Python **3.13**, and Docker Desktop with integration enabled
+for your Ubuntu distribution. Keep a new checkout in WSL's Linux filesystem.
 
 ```bash
+mkdir -p ~/projects
+cd ~/projects
 git clone https://github.com/hawks23/anywikia.git
 cd anywikia
-python3 -m venv .venv
-source .venv/bin/activate
+python3.13 -m venv .venv313
+source .venv313/bin/activate
 python -m pip install -r requirements.lock.txt
-# First installation only; preserve an existing .env:
-cp .env.example .env
+cp -n .env.example .env
 ```
 
-Set CAMPUSAI_API_KEY and CAMPUSAI_MODEL in .env for extraction. Optional settings
-are CAMPUSAI_API_URL, LLM_TIMEOUT, and LLM_MAX_TOKENS. Local lookups and checks need no credentials.
-The lock file records installed versions; requirements.txt allows broader versions.
-With uv, use `uv venv --python 3.13 .venv` and
-`uv pip install --python .venv/bin/python -r requirements.lock.txt`.
+Set `CAMPUSAI_API_KEY` and `CAMPUSAI_MODEL` in `.env`. Never commit credentials.
+If Python 3.13 is unavailable, install it first (for example with `uv python install
+3.13`, then `uv venv --python 3.13 .venv313`).
 
-Generated indexes are excluded from Git. On a fresh clone, build once:
-
-```bash
-cd keyboards-index
-../.venv/bin/qlever index
-cd ..
-python tests/start_qlever.py
-```
-
-The endpoint is http://127.0.0.1:7071; the container is qlever.server.anywikia.
-It mounts this checkout's keyboards-index directory at /index. The startup helper
-uses paths relative to its own script and verifies the container mount.
-Stop with `docker stop qlever.server.anywikia`. Stop and rebuild the index after
-changing keyboards.nt; editing RDF alone does not change the running index.
-
-See [how-to-run.md](how-to-run.md) for the quick start and
-[documentation-checklist.md](documentation-checklist.md) for pre-push maintenance.
-
-## Local review website
-
-Start QLever and the local web server:
+**No QLever installed?** Start Docker Desktop, enable **Settings → Resources → WSL
+Integration** for Ubuntu, and check `docker info` from WSL. The startup helper
+fetches the QLever Docker image, pins its image ID locally, builds the initial
+index from the included RDF, and starts the server. A separate native QLever
+installation or manual `qlever index` command is not needed. The Python lock file
+also includes the QLever CLI and dependencies used by the project.
 
 ```bash
-cd ~/anywikia
-source .venv/bin/activate
 python tests/start_qlever.py
 python web_app.py
 ```
 
-Open **http://localhost:8000**. Use `--port 8001` if needed. No additional Python
-packages or frontend build step are required. CampusAI credentials remain in `.env`
-on the server; extraction uses the existing handler in an isolated subprocess.
-Pipeline progress, waiting messages and errors stream live to the terminal running
-`web_app.py`; JSON results are sent separately to the browser. Restart the web
-server after changing Python code to load the changes.
+Open **http://localhost:8000**. The writable QLever endpoint is
+**http://127.0.0.1:7072**. First startup can take several minutes.
 
-- Paste text or load the example, then choose **Extract & match**.
-- Review claims grouped by keyboard. Edit names, values and quantity units.
-  With four or more entities, or more than twelve claims, results automatically
-  switch to compact mode: collapsed entity summaries in a scrollable pane, with
-  one entity open at a time. Toggle compact/expanded view at any time; edits and
-  loaded RDF details are preserved.
-- **Match the keyboard** comes before value editing. If exact lookup fails,
-  **Did you mean…?** offers up to three similar names. Inspect **View stored
-  properties**, then **Confirm this match** to replace the reviewed name/QID.
-  The original name is retained; matching choices collapse and extracted values
-  remain editable under **Review the values**. Comparisons use the selected QID.
-- **Use as new entity (demo)** is always available under match choices, including
-  after confirmation. It clears the selected QID, restores the original source
-  name unless manually edited, and keeps edited claims. **ENTITY ADDED !** is a
-  placeholder only: no RDF file, index or server data is modified.
-- **Export review** downloads the original result and a separate editable review
-  draft. Reloading the page loses the draft. Evidence stays unchanged. Edited
-  values are not automatically re-resolved or validated as facts; changing a
-  value clears its value ID, and changing a name clears its manual match decision.
-  Original automatic IDs remain available as historical lookup results.
-
-This is a local development UI, bound to loopback. It is not a public multiuser
-server. Exact label/alias matching is unchanged; an unmatched name is not proof
-of a new entity. A failed lookup is not evidence of a new entity; the demo choice is manual. Property PIDs
-remain fixed by the supported schema. Review exports are separate from the
-handler's JSON format and are not currently importable into the CLI.
-
-## Run the complete pipeline
+For QLever's own query editor, run this in another activated terminal:
 
 ```bash
-cd ~/anywikia
-source .venv/bin/activate
-python tests/start_qlever.py
-python handler.py "The Yamaha P-150 has a width of 1385 mm."
-python handler.py "The Yamaha P-150 has a width of 1385 mm." --json
+python test_QLeverUI.py
 ```
 
-The handler calls each step explicitly:
+Open the printed URL, normally **http://127.0.0.1:8178/default**. This helper
+starts/resumes the graph and its query UI. Use `--ui-port 8179` if 8178 is occupied.
+The UI image is downloaded on first use. Containers keep running after the helper
+exits. See [how-to-run.md](how-to-run.md) for the complete guide, WSL path workaround,
+verification queries, migration and recovery.
 
-1. check_server confirms that the endpoint executes a minimal SPARQL query.
-2. check_dataset verifies known Keyboards item/property definitions exist.
-3. extract_entities sends the passage and the typed model schema to CampusAI,
-   returning claims grouped by keyboard and property with supporting sentences.
-4. resolve_extraction enriches the grouped model directly: resolve each keyboard
-   once, attach catalog-validated PIDs, and resolve entity-valued claims.
-5. print_results prints keyboards with nested property claims or grouped JSON.
+## Review and save
 
-Preflight failures stop before the LLM request. Extraction errors stop the run.
-If a later lookup fails, the fact and mapped PID are retained with unresolved
-entity IDs and a warning.
-Unknown or ambiguous names are not guessed. Source evidence being present does
-not prove it supports the extracted claim. Units are preserved without conversion.
-No source facts are retrieved from the RDF to complete the extraction.
+1. Paste text and choose **Extract & match**. Each card reports distinct properties
+   extracted. Suggested IDs remain unconfirmed until you inspect the candidate.
+2. Click **Confirm this match**. A spinner appears during lookup; the card then
+   says **Now editing on QID** and comparisons become available. Alternatively,
+   explicitly confirm a new entity after checking candidates.
+3. Edit values. Existing records include only edited/selected properties. A single
+   stored editable value is automatically selected for replacement. Use **Other
+   save options** for multiple statements or to retain an old value and add another.
+   Duplicate extracted values share one editor: choose an alternative or enter
+   your own. **+ Add property** adds a supported property not already displayed.
+4. Click **Apply changes to QLever** or **Create entity in QLever**, then confirm
+   the property/value summary. The UI reports progress and read-back verification.
+5. Use **Query saved values** to inspect readable entity/property/unit names and
+   optionally reveal the generated SPARQL query.
+6. When ready, click **Save to keyboards.nt and rebuild index**. This exports the
+   live graph, builds/verifies a fresh index and switches QLever to it.
 
-### Extraction schema and output formats
+A field edit alone never writes RDF. New entity IDs and full statements are
+allocated server-side. Prices create offers linked to keyboards by P24; P25 is
+stored on the offer. Existing prices can be replaced by selecting their statement.
 
-`property_list.json` records 30 properties from the local RDF, including labels,
-descriptions, Wikibase value types, predicate mappings, and observed datatypes and
-units. `functions/pydantic_models.py` defines a curated set of **24 keyboard
-properties**, including price, based on that catalog. Offer, seller, date, and stored-query
-metadata are outside this extraction model. The model is defined in Python; it
-is not regenerated from the RDF or JSON catalog on each request.
+## Persistence and validation
 
-The LLM receives the source passage, extraction instructions, and the Pydantic
-schema with property descriptions. It fills supported fields only. Descriptions
-include our extraction guidance, which is not a constraint declared by the RDF.
-
-| Property kind | Pydantic claim value | Example |
+| Action | Running graph | Source `keyboards.nt` |
 | --- | --- | --- |
-| Quantity, including counts | Finite `Decimal`, plus nullable source unit | width: 1385, unit: mm |
-| Entity relationship | Name as `str`, pending ID resolution | manufacturer: Yamaha |
-| Text, URL, external ID, media filename | `str` copied from input | explicitly supplied product URL |
+| Confirm a save | Updated immediately; persistent update log | Unchanged |
+| Export and rebuild | Switches to verified fresh index | Updated from live graph |
 
-Every property is a list of claims with evidence. Unmentioned properties are
-empty lists; repeated or conflicting claims remain separate. Units are copied
-from the source without conversion; an absent unit is `null`. Observed RDF unit
-URIs do not justify inventing a source unit.
+Ordinary saves need no restart. Rebuild locks application writers and briefly
+interrupts queries during the switch. Prior generations and source backups are
+retained. Run setup again to recover an interrupted rebuild.
 
-Explicit English polyphony compounds such as `six-voice` and `16-note` are
-normalized to numeric values with their stated count units before validation.
-Supporting context is preserved. Ambiguous expressions and conflicting units
-are rejected; this is not general free-text quantity parsing or unit conversion.
+The server validates property mappings against the actual graph, value datatypes,
+units, confirmed entity references, and the preview's graph revision. Counts are
+nonnegative integers; length accepts mm/cm/m, mass g/kg, power W, and price
+DKK/EUR/USD/GBP. Count units are optional. Q199 on a physical measurement means
+no measurement unit was specified; it does not imply mm, cm, or kg. URLs,
+Wikidata IDs and media filenames receive syntax checks, not online verification.
 
-The website labels count units **Unit (optional)**. Populated width, depth,
-height, weight and power-consumption claims require a unit. Missing units show
-inline errors and block the new-entity demo, while draft export remains available.
-Extraction itself still permits absent source units.
+If the result is uncertain, **Check previous update** checks/completes the original
+operation without creating a second entity. Newer draft edits are preserved.
+A recorded update with a verification mismatch is distinguished from a fully
+verified save; diagnostic predicates are retained server-side.
 
-P25 price claims preserve amounts, source currencies and seller/date context in
-evidence. The currency dropdown offers **DKK, EUR, USD and GBP**, an application
-list rather than an RDF constraint. No currency is selected by default or inferred
-from ambiguous symbols. Unsupported source currencies remain visible for manual
-selection; populated prices require a listed currency. Existing prices always
-require currency and offer-context review; no exchange-rate conversion occurs.
-Offers are not separate extracted records, and prices must not be treated as
-universal attributes of a model when implementing persistence.
+Keep `.anywikia/`: it holds indexes, persistent updates, private access tokens,
+operation previews, UI state and backups. It is ignored by Git. Browser drafts
+are not durable; **Export review** preserves original extraction and draft JSON,
+but importing that export is not implemented. Do not use external SPARQL writers
+alongside the application's single-writer workflow.
 
-`functions/review_validation.py` provides catalog-based unit validation, including
-the currency whitelist, for future RDF create/update endpoints. No write endpoint
-exists yet; it must call this validation before mutation. The validator does not
-establish factual correctness, general unit compatibility or full write readiness.
+## Code organization
 
-Extraction-only output is grouped. This shortened example omits empty fields:
-
-```json
-{
-  "entities": [{
-    "name": "Yamaha P-150",
-    "width": [{
-      "value": "1385",
-      "unit": "mm",
-      "evidence": "The Yamaha P-150 has a width of 1385 mm."
-    }]
-  }]
-}
+```text
+handler.py                Main orchestrator and graph action dispatcher
+web_app.py                Local HTTP adapter and extraction subprocess
+test_QLeverUI.py          One-command graph/query-UI launcher
+tests/start_qlever.py     Compatibility graph setup launcher
+functions/
+  extract_input.py        CampusAI extraction and supporting context
+  pydantic_models.py      Curated extraction schema and catalog mapping
+  resolve_local.py        Local entity/name resolution
+  resolved_models.py     Grouped resolved records
+  similar_names.py       Lazy fuzzy-match cache
+  rdf_service.py         Graph workflow and background rebuild jobs
+  rdf_models.py          Trusted write schema and datatype/unit checks
+  rdf_store.py           Preview, SPARQL updates, verification and queries
+  qlever_runtime.py      Docker lifecycle, persistence, rebuild and rollback
+  qlever_ui.py           Managed QLever query UI
+  qlever_checks.py       Server/dataset checks
+  display_results.py     CLI output
+  progress.py            Progress reporting
+frontend/                 Plain JavaScript/CSS review interface; no build step
+property_list.json        Catalog of 30 local properties; 24 supported for review
+keyboards-index/          Versioned RDF and legacy Qleverfile
 ```
 
-Decimal values stay typed in memory and serialize as strings only for JSON.
-The handler does not call `to_claims()` or flatten records. The separate models
-in `functions/resolved_models.py` describe the application-owned resolved result;
-the LLM still receives only the extraction models.
+The legacy Qleverfile targets 7071 and is retained as a reference. The application
+uses the managed 7072 runtime; its helpers do not use the legacy server settings.
+CLI extraction remains available with `python handler.py "Source passage" --json`.
 
-Handler JSON now has this shape (empty properties and candidate metadata omitted
-here for readability; the actual output preserves them):
+## Limits and testing
 
-```json
-{
-  "knowledge_base": "https://keyboards.wikibase.cloud",
-  "entities": [{
-    "name": "Yamaha P-150",
-    "subject_id": "Q1",
-    "warnings": [],
-    "properties": {
-      "width": {
-        "property_id": "P2",
-        "label": "width",
-        "value_type": "Quantity",
-        "claims": [{
-          "value": "1385", "unit": "mm",
-          "evidence": "The Yamaha P-150 has a width of 1385 mm.",
-          "value_id": null, "value_candidates": [], "warnings": []
-        }]
-      }
-    }
-  }]
-}
-```
-
-Property IDs and types come from the explicit field mapping validated against
-`property_list.json`, not from the LLM or a repeated property-label search.
-Catalog drift fails clearly. Keep the catalog synchronized with the RDF.
-Subject and entity-value names use the existing exact, case-insensitive local
-label/alias lookup. Candidate IDs are retained under `subject_candidates` and
-`value_candidates`; multiple matches stay unresolved and produce warnings.
-The CLI preserves exact alias matching (e.g. P150). The website adds the
-similar-name fallback described below; it never automatically accepts suggestions.
-Names repeated within a run reuse lookup results; distinct extracted keyboard
-records are never merged automatically. Repeated/conflicting claims remain intact.
-Lookup failures preserve source content, mapped PIDs, and IDs already resolved.
-
-`to_claims()` and `extract_ids()` remain legacy helpers for old flat exports;
-neither is used by the main pipeline. The formatter can still read old flat JSON.
-
-Existing consumers of the old flat handler output must now iterate
-`entities`, then each entry in `properties`, then its `claims` list. Subject IDs
-are stored once per entity and property IDs once per property group.
-
-### Save and inspect your own results
-
-`--json` prints to standard output; it does not automatically create a file.
-Run these commands in Ubuntu/WSL from the project root:
-
-```bash
-mkdir -p outputs
-# Put your own passage in sample_input.txt first.
-# Grouped extraction only; requires CampusAI credentials.
-python functions/extract_input.py "$(cat sample_input.txt)" > outputs/grouped.json
-python -m json.tool outputs/grouped.json
-
-# Full pipeline; requires CampusAI and running QLever.
-python handler.py "$(cat sample_input.txt)" --json > outputs/claims.json
-python functions/display_results.py outputs/claims.json
-```
-
-These are two independent LLM calls, so the results may differ. The handler does
-not currently accept a saved grouped extraction as CLI input and does not save
-its intermediate extraction automatically. `outputs/` is ignored by Git.
-
-### Understanding Value and Value QID
-
-`Value` is the content extracted from the input. `Value QID` identifies that
-value only when the property expects another entity, such as a manufacturer.
-The resolver uses the mapped property type from the local catalog (or QLever
-for legacy facts without a PID) and looks up
-the value name only for `wikibase:WikibaseItem` properties.
-
-| Property | Extracted value | Unit | Value QID |
-| --- | --- | --- | --- |
-| manufacturer | Yamaha | none | Local `Q2`, if uniquely matched |
-| width | 1385 | mm | Not applicable: a quantity |
-| keys | 88 | none | Not applicable: a quantity |
-
-For example, `Q1 --P6--> Q2` links Yamaha P-150 to its manufacturer Yamaha.
-For width, `Q1 --P2--> 1385` has a numeric value rather than an entity QID;
-the full quantity representation must also preserve the unit.
-
-Grouped readable output shows Value QID only for entity-valued properties.
-Quantities and text do not need QIDs. Unresolved entity values show warnings and,
-when ambiguous, the candidate IDs. Grouped JSON retains nullable value_id fields.
-
-## Run each module independently
-
-### Progress while running
-
-The handler prints short progress messages for QLever checks, CampusAI extraction,
-and grouped keyboard/value ID lookups. Long steps print a waiting
-message every ten seconds and report elapsed time when they finish or fail.
-Waiting messages indicate that the call is still pending, not a completion estimate.
-Source text and credentials are not included in these messages.
-
-Progress goes to **stderr**; results go to **stdout**, so JSON redirects stay valid:
-
-```bash
-python handler.py "The Yamaha P-150 has a width of 1385 mm." --json > results.json
-# Hide progress (errors are still reported):
-python handler.py "The Yamaha P-150 has a width of 1385 mm." --json --quiet
-```
-
-Standalone extraction and resolution scripts also support `--quiet`.
-
-### Standalone commands
-
-Execute these from the project root; direct script paths and `python -m functions.NAME`
-are both supported. Each module provides --help.
-
-```bash
-# Extraction only: needs CampusAI, not QLever.
-python functions/extract_input.py "The Yamaha P-150 has a width of 1385 mm."
-
-# Resolution only: needs QLever, not CampusAI. Uses a synthetic 999 cm sample.
-python functions/resolve_local.py
-# Resolve saved grouped output without another LLM call:
-python functions/resolve_local.py --extraction-file outputs/grouped.json --source-file sample_input.txt > outputs/resolved.json
-# Compatibility: resolve an older flat fact:
-python functions/resolve_local.py --fact-json '{"subject":"Yamaha P-150","property":"width","value":"999","unit":"cm","evidence":"The Yamaha P-150 has a width of 999 cm."}'
-
-# Two separate read-only checks; failures exit nonzero.
-python functions/qlever_checks.py --check server
-python functions/qlever_checks.py --check data
-python functions/qlever_checks.py --check both
-
-# Formatting only: no services. Accepts grouped JSON or legacy flat lists.
-python functions/display_results.py
-python functions/display_results.py results.json --json
-```
-
-The resolution sample should attach Q1/P2 while keeping 999 cm unchanged, even
-though the current snapshot records a width of 1385 mm. This demonstrates source
-preservation, not approval of the synthetic claim. The dataset check verifies
-identity, not every triple or the correctness of every fact.
-
-## Required concepts
-
-- **RDF triples:** subject -> predicate -> object. Objects can be entities or
-  literal values. A resource can be a subject in one fact and an object in another.
-- **No fixed levels:** graph depth depends on the starting point and relationships
-  followed. Use visited nodes and traversal limits if adding graph exploration.
-- **Local IDs:** Keyboards Wikibase has its own QIDs/PIDs. They are not interchangeable
-  with public Wikidata IDs. Local Q1 means Yamaha P-150; P2 means width; P4 means height.
-- **Namespaces:** local entities use https://keyboards.wikibase.cloud/entity/;
-  direct predicates use https://keyboards.wikibase.cloud/prop/direct/.
-  These are identifiers, not websites fetched by the local query.
-- **Schema:** properties describe value types and predicate mappings. The local
-  P11 means instance of, but some items lack classification. Observed property
-  usage is not a required-field validation schema.
-- **Statements:** direct facts simplify queries; full statements can include ranks,
-  qualifiers, references, and structured values. Quantity nodes carry units.
-- **Pydantic:** validates extraction structure, not truth or correct entity matching.
-  Use references for graph relationships instead of infinitely nested objects.
-
-The supplied snapshot contains 6,888 triples and 30 property definitions. It is
-not the whole Wikidata database and is not automatically synchronized online.
-
-## Tests and current limitations
+The current workflow targets a small local graph (at most 100,000 triples).
+Supporting sentences are model-generated and not verified for truth or exact
+quotation. Fuzzy suggestions require human confirmation; no match does not prove
+an entity is new. Unit conversion and general qualifier/rank editing are not
+implemented. See [limitations.md](limitations.md) for the full scope.
 
 ```bash
 python -m unittest discover -s tests -v
-# Requires Node.js; no npm dependencies or installation step.
 node tests/test_comparison.cjs
+node tests/test_review_plan.cjs
+node tests/test_review_interactions.cjs
+node --check frontend/app.js
+node --check frontend/comparison.js
+node --check frontend/review-plan.js
+node --check frontend/rdf-review.js
+git diff --check
 ```
 
-Offline tests cover grouped resolution without legacy conversion, lookup caching,
-preserved candidate IDs, source preservation, ambiguous/missing IDs, entity-valued
-properties, supporting-context preservation, handler step order, preflight failures, failed
-lookups, invalid server responses, and JSON formatting. They mock the LLM and
-network; they do not establish live CampusAI availability or extraction accuracy.
-The tests also check decimal precision, absent units, conflicting claims,
-rejection of invalid quantities/extra fields, supported property mappings against
-the catalog, and local generation of the structured-output schema. Schema
-generation alone does not prove that the configured CampusAI model accepts it.
-Use the standalone server checks for local service verification.
+Node is needed for frontend tests, not to run the website. Offline tests exercise
+RDF updates using RDFLib and mock Docker lifecycle operations; they are not a live
+QLever compatibility guarantee. User testing established visible saved values and
+an exported RDF snapshot; full automated browser and restart/rebuild checks remain
+outstanding in this environment.
 
-For a live smoke test, run both QLever checks above, then the extraction-only
-command, then the handler on the same passage. Check the subject, property, value,
-unit, and supporting context yourself. For the sample, expect width 1385 mm; local
-Q1/P2 should attach if the current dataset is loaded. A passing offline suite
-does not replace this live test. Provider availability and model behavior can change.
+## Versioned RDF and migration
 
-## Implementation status and continuation plan
+Include exported `keyboards-index/keyboards.nt` in requested commits/pushes.
+The application does not automatically commit or push. Live updates absent from
+that file will not transfer through Git. Export/rebuild before migrating and keep
+the old checkout until the new checkout's queries match. The current RDF includes
+local review/test edits; it is not a pristine upstream snapshot or a statement of
+verified keyboard specifications. Reordering and numeric lexical changes may
+accompany QLever export.
 
-| Stage | Status | Scope |
-| --- | --- | --- |
-| Local RDF and QLever | Implemented | Local index, startup helper, separate server/dataset checks |
-| Property catalog | Implemented | 30 RDF definitions recorded in property_list.json |
-| Typed extraction | Implemented | 24 supported properties, grouped entities, supporting sentences for review |
-| Grouped resolution | Implemented | Separate typed output; subject per keyboard, mapped PIDs, per-claim value QIDs and candidates |
-| Basic ID lookup | Existing behavior retained | Case-insensitive exact label/alias lookup; unique matches only |
-| Similar-name suggestions | Implemented in website | Lazy cached labels/aliases, Levenshtein distance below 3, top three QIDs, manual selection |
-| Existing-claim comparison | Implemented in website | Direct-value comparisons; matching, differing, missing and uncertain results; no unit conversion |
-| Review and export | Implemented for drafts | Browser edits, manual match confirmation, JSON review export |
-| Approved RDF updates | Planned | Keep/replace/add decisions with provenance and persistence; no graph writes today |
-
-### Similar-name suggestions and cache
-
-Only a keyboard with **no exact local match** triggers `functions/similar_names.py`.
-Exact matches, ambiguous exact matches and failed queries do not load the cache.
-The web server loads labels, aliases and QIDs into memory on first demand and
-reuses them for five minutes. Expiry refreshes only on the next fuzzy lookup;
-there is no background fetch or JSON cache file. Restarting clears this cache.
-
-Candidates currently require the local P1 (number of keys) property, so records
-without P1 are excluded. Names are case-folded and whitespace-normalized, retaining
-punctuation. Each QID receives its lowest label/alias Levenshtein distance; up to
-three distinct QIDs with distance **< 3** are suggested. No candidates means no
-suggestion panel. Errors are displayed separately from an empty result.
-
-Suggestions may be different model variants, so selection is manual. Manufacturer
-and other entity-valued claims still use exact lookup. The cache module contains
-a TODO for future real creation: once a new entity is queryable in QLever, update
-or invalidate an already-created cache with its **QID**, name and user aliases.
-The demo button does not change RDF or the cache. PIDs identify properties.
-
-After identities are resolved, the website compares each individual claim with
-the graph. The CLI does not perform this comparison. Entity matching and
-duplicate-statement detection are separate steps. Broader quantity comparison
-will need explicit unit normalization while preserving the original
-source value and evidence. Repeated/conflicting extractions currently stay intact;
-they are not automatically merged, approved, or inserted.
-
-The intended PoC will produce a reviewable report of existing, missing,
-conflicting, and unresolved claims, then export approved additions. Evaluate it
-on manually checked passages and a test copy with known facts removed. Do not
-modify the original snapshot to manufacture a successful demo. The PoC will
-remain limited by the local snapshot, selected properties, extraction accuracy,
-entity ambiguity, and unverified supporting context.
-
-## Troubleshooting and Git
-
-CampusAI configuration: `CAMPUSAI_MODEL=chat` completed the current schema in
-live testing. `LLM_TIMEOUT` defaults to 180 seconds (HTTP request timeout, not a
-strict total runtime deadline); `LLM_MAX_TOKENS` defaults to 8192. Automatic SDK
-retries are disabled. The client reports model, limits, and output token usage.
-
-On 2026-11-20, the previous `google/gemma-4-26b-a4b` configuration answered plain
-requests and a tiny schema, but generated incorrect, whitespace-repeating JSON
-with the full keyboard schema and exhausted a 2048-token diagnostic limit.
-This was not a QLever or connectivity failure. If it recurs, test another model
-or a smaller schema; increasing timeouts alone does not resolve repetition.
-Model availability and behavior may change. Evidence is displayed for review without source-text matching; schema acceptance
-does not guarantee extraction accuracy.
-
-- Docker unavailable: start Docker Desktop, enable Ubuntu integration, and retry
-  once docker info succeeds.
-- Index missing: run ../.venv/bin/qlever index from keyboards-index.
-- Wrong container mount: inspect docker inspect qlever.server.anywikia; after
-  confirming it is an obsolete project container, stop/remove it and run the helper.
-- Query failures: inspect keyboards-index/keyboards.server-log.txt; port is 7071.
-- CampusAI timeout: verify credentials, configured URL/model, and network access.
-  Local checks can pass while the LLM service is unavailable.
-- Supporting context: the LLM provides a short group of relevant sentences for each
-  claim. No sentence IDs, exact-text checks, or whitespace repair are applied.
-  The website shows this under a small expandable **Supporting context** label.
-  These sentences are model-provided context, not automatically verified evidence.
-
-.gitignore excludes credentials, virtual environments, caches, generated indexes,
-vocabularies, logs, PIDs, and databases. Commit source RDF and credential-free
-configuration. Never commit .env; .env.example is the public template.
-
-## References
-
-- [Wikibase RDF format](https://www.mediawiki.org/wiki/Wikibase/Indexing/RDF_Dump_Format)
-- [SPARQL](https://www.w3.org/TR/sparql11-query/)
-- [QLever](https://docs.qlever.dev/quickstart/)
-- [Pydantic](https://docs.pydantic.dev/latest/concepts/models/)
-
-### Comparing extracted values with RDF
-
-The website automatically fetches direct properties for each uniquely matched
-keyboard. It compares each claim by PID and shows stored values beneath it:
-
-- Green: **Value exists** (one of the stored values matches).
-- Muted red: **Conflicting value** (stored values differ).
-- Blue: **New value for this property** (no direct value stored).
-- Amber: **Needs review / verify units** (comparison cannot establish equality).
-
-Comparison refreshes after value/unit edits or a manual candidate confirmation.
-Changing the keyboard name suspends comparison until a match is confirmed. Failed
-RDF requests show a retry action, never a new-value classification. Review exports
-include comparison results; RDF remains unchanged.
-
-Entity values compare QIDs; strings compare literally; quantities compare exact
-numeric values with matching recognized units. Unit conversion is not implemented.
-The snapshot uses Q199 (unitless) for some physical measurements, so these require
-unit review. Missing units and unresolved value entities also require review.
-A differing stored value is flagged for review, not proof that either claim is
-wrong; qualifiers, ranks and multi-valued-property rules are not compared.
-Run the frontend rules tests with `node tests/test_comparison.cjs`.
+See [workflow.md](workflow.md) for diagrams and
+[documentation-checklist.md](documentation-checklist.md) for release evidence.

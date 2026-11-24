@@ -1,131 +1,51 @@
-# Documentation update tracker
+# Documentation reconciliation — 2026-11-24
 
-## Price extraction and currency dropdown — 2026-11-24
+This review supersedes the earlier implementation queue. Reconcile affected docs
+before each requested push; preserve original proposal documents as historical
+material. Include exported RDF in requested pushes, not automatic application pushes.
 
-- [x] README.md / how-to-run.md: now 24 extracted properties including P25 price; native dropdown offers application-defined DKK/EUR/USD/GBP. No automatic default or guessing ambiguous symbols. Source currencies outside that list remain visible for manual review. Populated prices require an allowed currency; incomplete drafts can still be exported.
-- [x] limitations.md / workflow.md: source-specific prices retain offer context in evidence; offer records/sellers/dates are not separately extracted. Existing-price comparison stays uncertain pending currency and offer-context handling. Original RDF is unchanged and declares no allowed currency list; writes still unimplemented.
-- [x] Documented that future RDF create/update endpoints must use validate_units_for_rdf, including its P25 currency whitelist, and model price/offer context before persistence.
-- Validation: 56 offline Python tests passed, including grouped price resolution and server-side currency checks; JavaScript comparison/currency tests, app.js syntax, and git diff --check passed. Live CampusAI and browser interaction not rerun.
+## Completed for this push
 
-## Review unit requirements — 2026-11-24
+- [x] README rewritten around implemented confirmed writes, editable/new entities,
+  datatype/unit validation, price offers, persistence/rebuild and query verification.
+- [x] Fresh-clone setup documents Python 3.13, venv dependencies, private .env,
+  Docker Desktop installation/WSL integration and automatic QLever image/index setup.
+- [x] how-to-run.md is canonical: Linux-filesystem checkout, startup commands,
+  test_QLeverUI.py, port override, Q13 query, export/rebuild, rollback and migration.
+- [x] Existing /mnt/c checkout workaround and unresolved directory-path cause are
+  documented without promising that migration eliminates every runtime issue.
+- [x] workflow.md includes user, module and persistence Mermaid diagrams. Updated
+  mermaid-diagram.png is a compact companion rendering; visually inspected for
+  readable text, arrows and complete steps. Branch details remain in Mermaid.
+- [x] limitations.md distinguishes implemented functionality from remaining scope,
+  single-writer/snapshot limits, unverified context, protected statements and UI tests.
+- [x] UI walkthrough matches current buttons: Confirm this match with progress,
+  Now editing on QID, duplicate-value choices, Apply/Create, Query saved values,
+  Check previous update, and Save to keyboards.nt and rebuild index.
+- [x] No obsolete UI screenshots are shipped. The walkthrough and diagram are
+  current; new UI screenshots require a live visual session and are not fabricated.
+- [x] Runtime files, private tokens, environments and credentials remain ignored.
+- [x] Exported RDF parses successfully (6,928 triples). User-approved saved edits
+  include Q1 keys 90, Q13 keys 60, Q34 keys 90 and Q34 width 135.6. Export also
+  reorders triples, changes numeric serialization and blank-node identifiers.
+  These are local review/test edits, not independently verified specifications.
+- [x] Validation: 101 Python tests; comparison/unit/currency, review planning,
+  duplicate choices, confirmation gate, loading/progress/retry interaction tests;
+  JavaScript syntax and git whitespace checks. CLI help checked.
+- [x] Earlier startup issue was followed by user running the app and querying
+  saved values; shared exported RDF provides evidence of source export.
 
-- [x] README.md / how-to-run.md: count units marked optional; populated measurements show required units and inline errors. New-entity demo is blocked until units are supplied. Draft export remains available.
-- [x] limitations.md / workflow.md: RDF writes still absent. Future create/update handlers must call functions.review_validation.validate_units_for_rdf before mutation; it uses catalog types and checks unit presence, not unit compatibility or truth. Extraction continues accepting absent units.
-- Validation: all 54 Python tests, JavaScript comparison/unit-rule checks, both JavaScript syntax checks, and git diff --check passed. Browser interaction and live services not exercised in this pass.
+## Remaining validation limits (disclosed, not claimed complete)
 
-## Polyphony compound parsing fix — 2026-11-24
+- [ ] Automated live Docker restart/persistence and full rebuild rollback smoke
+  test on the user's runtime. Offline tests use mocked Docker and in-memory RDF.
+- [ ] Automated browser smoke and fresh UI screenshots. Browser access was denied
+  earlier in this session; the latest UI was checked through offline interactions.
+- [ ] Live test_QLeverUI.py launch on WSL. The launcher passed mocked lifecycle
+  tests, but Windows could not reach the user's running QLever endpoint.
+- [ ] Diagnose any remaining live recorded-but-unverified status using persisted
+  mismatch predicates/read-error diagnostics. Equivalent decimals and xsd:string
+  representations are covered by regression tests.
 
-- [x] README.md / limitations.md: document narrow normalization of explicit English polyphony counts (e.g. six-voice and 16-note) into numeric values and source units; evidence stays unchanged. Ambiguous expressions and conflicting units remain invalid.
-- [x] Extraction model/prompt documentation: explain number-word normalization; no unit conversion or general free-text quantity parsing.
-- Workflow topology and diagram are unchanged; no RDF writes added.
-- Validation: all 51 offline Python tests passed, including JSON parsing of six-voice/16-note, evidence preservation, and rejection of ambiguous or conflicting-unit inputs. Live CampusAI execution not rerun.
-
-## Final pre-push verification — 2026-11-24
-
-All 56 Python tests, JavaScript comparison/currency checks, both frontend syntax checks and whitespace checks passed. Reviewed the existing rendered diagram against workflow.md; its high-level nodes remain valid, with new validation details in the surrounding text. Proposal documents and RDF/index files remain unchanged. Live QLever verification from this Windows process timed out; browser/CampusAI smoke testing was not completed here. No claim of live-service verification is made. Staging is limited to reviewed source, tests and documentation.
-
-Keep this file current as code changes. Record affected documents and concrete
-pending edits during implementation; finish the documentation pass immediately
-before pushing. A checked item means reviewed against current behavior, not just
-that the file exists. Reset affected items when later changes make them stale.
-
-## Pre-push review — 2026-11-21
-
-- [x] **how-to-run.md** — updated on 2026-11-21 with setup, website/CLI commands,
-  logging, review, comparison, compact mode, stopping/restarting, and checks.
-- [x] **how-to-run.txt** — obsolete file removed; how-to-run.md is canonical.
-- [x] **README.md** — reconcile feature status, examples, run commands and links
-  with the final changes in this branch; distinguish browser comparison from CLI.
-- [x] **limitations.md** — replace the outdated five-property scope with the
-  current 23 supported properties; reflect implemented browser comparison and
-  review export, unverified supporting context, and remaining RDF-write work.
-- [x] **workflow.md** — review both CLI and website diagrams against the final
-  pipeline, candidate selection, comparison, errors, and review export.
-- [x] **mermaid-diagram.png** — check whether it reflects workflow.md; regenerate
-  any outdated rendered diagram from the final Mermaid source before pushing.
-- [x] **Code docstrings and CLI help** — check functions/, handler.py and web_app.py
-  for obsolete exact-evidence validation or flattened-output descriptions.
-- [x] **Final verification** — check links, commands, example output shapes and
-  implementation-versus-planned labels; summarize validation in the commit.
-
-## Change-to-document map
-
-| Change | Review/update |
-| --- | --- |
-| Setup, dependencies, environment, ports or startup | how-to-run.md, README.md, .env.example when relevant |
-| Extraction models, prompts, supported properties or evidence | README.md, limitations.md, workflow.md, model examples/docstrings |
-| QID/PID lookup, candidate handling or comparison | README.md, limitations.md, workflow.md, affected module docs |
-| Website controls, compact mode, editing or export | how-to-run.md, README.md, website workflow diagram |
-| Pipeline ordering, error paths or new stages | workflow.md and mermaid-diagram.png, handler/module docstrings |
-| Implemented limitation or new known gap | limitations.md and README.md status/roadmap |
-| Test commands or required checks | how-to-run.md and README.md testing instructions |
-| RDF schema/catalog changes | property_list.json consistency, README.md, limitations.md, model documentation |
-
-The original **Project Proposal.docx** and **Project Proposal.pdf** are historical
-proposal artifacts. Preserve them; do not rewrite them to reflect implementation
-changes unless explicitly requested. RDF/index files are data/runtime artifacts,
-not documentation to regenerate during the documentation pass.
-
-## Before each push
-
-1. Inspect the full diff since the last push and add any missing documentation tasks.
-2. Complete each affected pending item; mark irrelevant items with a reason.
-3. Review diagram source and rendered images together. Do not present an old image
-   as the current workflow.
-4. Verify commands and examples, run relevant checks, and ensure secrets/generated
-   outputs are excluded from the commit.
-5. Update this checklist with the review date and outcomes, then commit and push
-   only when requested. Preserve a record of completed items until a new change
-   makes them pending again.
-
-No automated sync or background monitoring is installed; this checklist and
-AGENTS.md are the repository's persistent maintenance instructions.
-
-## Output limit change — 2026-11-21
-
-- [x] Set CampusAI default and .env.example to 8192 output tokens; updated local .env.
-- [x] Updated README.md and how-to-run.md token-limit references.
-- [x] Before push, verify final configuration examples still match the code.
-- Workflow diagrams and limitations need no change for this setting alone.
-
-## Lazy similar-name suggestions — documentation review
-
-- [x] README.md / how-to-run.md: document “Did you mean” suggestions after exact
-  keyboard lookup fails, manual confirmation and reuse of RDF comparison.
-- [x] limitations.md: distance < 3, top three distinct QIDs, P1-based keyboard
-  candidate scope (records without key counts excluded), no automatic linking.
-- [x] workflow.md / rendered diagram: add lazy server-cache and suggestion path.
-- [x] Document five-minute lazy refresh, per-server-process memory only, restart
-  clearing cache, and future cache invalidation after real RDF/index updates.
-- [x] Added cache-update TODO in functions/similar_names.py for new QID, name and aliases.
-
-## Timeout change — 2026-11-21
-
-- [x] CampusAI default, local .env and .env.example now use 180 seconds.
-- [x] Website subprocess limit raised to 300 seconds to leave room for RDF lookups.
-- [x] Updated README.md and how-to-run.md timeout references.
-- [x] Recheck timeout instructions against final code before pushing.
-
-## Match-first review flow
-
-- [x] README.md / how-to-run.md: explain matching above extracted values; confirmation
-  replaces the reviewed name/QID, retains source name and editable claims, collapses
-  choices and refreshes comparisons. Original extraction stays in the export.
-- [x] workflow.md: reflect identity selection before compact claim editing.
-
-- [x] UI guide/screenshots: distinct “Match the keyboard” and “Review the values”
-  sections, prominent suggestion cards and direct confirmation buttons.
-
-- [x] Match-choice guide: “Use as new entity (demo)” stays available after
-  confirmation; clears selected QID/comparisons, restores source name, preserves
-  edited claims and allows switching back to an existing record. No RDF writes.
-
-Validation: 49 Python tests, 11 JavaScript comparison checks, JavaScript syntax
-checks, git diff whitespace check and both live QLever checks passed. UI behavior
-was exercised during implementation; no new live LLM call was needed for this
-documentation/configuration pass. Secrets remain ignored. Proposal and RDF/index
-files are unchanged.
-
-Rendered the website Mermaid block from workflow.md into mermaid-diagram.png
-and visually checked its readable nodes and branches. All current queue items
-are complete; reopen affected items when implementation changes again.
+These limitations are also recorded in README.md and limitations.md. They do not
+block the user's requested publication of the implemented code and documentation.
