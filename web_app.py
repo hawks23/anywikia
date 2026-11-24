@@ -4,19 +4,16 @@ Runs the CLI pipeline in an isolated subprocess and routes reviewed writes
 through handler.graph_action. Bind locally;
 this development server is not intended for public deployment.
 """
+
 import argparse
 import json
-import re
 import subprocess
-import sys
 import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
-from local_rdf import SPARQL_ENDPOINT
-from functions.similar_names import add_name_suggestions
 
 ROOT = Path(__file__).resolve().parent
 WRITE_CSRF = secrets.token_urlsafe(32)
@@ -24,78 +21,35 @@ WRITE_CSRF = secrets.token_urlsafe(32)
 
 def graph_action(action, payload=None):
     from handler import graph_action as dispatch
+
+    return dispatch(action, payload)
+
+
+def review_action(action, payload=None):
+    """Forward read-only review operations to the central handler."""
+    from handler import review_action as dispatch
+
     return dispatch(action, payload)
 
 
 def inspect_entity(qid):
-    """Read direct properties and available quantity units for one local QID.
-
-    Direct claims omit qualifiers and references. Return raw RDF terms alongside
-    English labels so missing labels and units do not hide stored information.
-    """
-    if not re.fullmatch(r"Q[1-9][0-9]*", qid):
-        raise ValueError("Invalid local entity ID")
-    query = f"""
-PREFIX kb: <https://keyboards.wikibase.cloud/entity/>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-PREFIX wb: <http://wikiba.se/ontology#>
-SELECT DISTINCT ?property ?propertyLabel ?value ?valueLabel ?unit WHERE {{
- kb:{qid} ?predicate ?value .
- ?property wb:directClaim ?predicate .
- OPTIONAL {{ ?property rdfs:label ?propertyLabel . FILTER(LANG(?propertyLabel) = "en") }}
- OPTIONAL {{ ?value rdfs:label ?valueLabel . FILTER(LANG(?valueLabel) = "en") }}
- OPTIONAL {{
-  ?property wb:claim ?claimPredicate ; wb:statementProperty ?statementPredicate ; wb:statementValue ?valuePredicate .
-  kb:{qid} ?claimPredicate ?statement .
-  ?statement ?statementPredicate ?value ; ?valuePredicate ?node .
-  ?node wb:quantityUnit ?unit .
- }}
-}} ORDER BY ?property ?value
-"""
-    response = httpx.post(SPARQL_ENDPOINT, data={"query": query},
-                          headers={"Accept": "application/sparql-results+json"}, timeout=20)
-    response.raise_for_status()
-    return {"id": qid, "properties": response.json()["results"]["bindings"]}
+    """HTTP adapter for the stored-value comparison query."""
+    return review_action("inspect", {"entity_id": qid})
 
 
 def extract(text):
-    """Keep CLI behavior isolated; return its grouped JSON without modification."""
-    if not isinstance(text, str) or not text.strip():
-        raise ValueError("Enter some source text first.")
-    if len(text) > 20000:
-        raise ValueError("Use at most 20,000 characters per passage.")
-    # Keep JSON on stdout for the browser and stream progress/errors directly to
-    # the server terminal on inherited stderr. Library calls do not enable logs
-    # themselves, so configure them explicitly inside this isolated child.
-    runner = """
-import json
-import sys
-import traceback
-from functions.progress import configure_progress
-from handler import run_pipeline
+    """HTTP adapter for isolated extraction; never writes RDF."""
+    return review_action("extract", {"text": text})
 
-configure_progress()
-try:
-    result = run_pipeline(sys.stdin.read())
-except Exception as error:
-    traceback.print_exc()
-    print(json.dumps({"error": str(error)}))
-    sys.exit(1)
-print(result.model_dump_json())
-"""
-    result = subprocess.run([sys.executable, "-u", "-c", runner], input=text, text=True,
-                            stdout=subprocess.PIPE, cwd=ROOT, timeout=300)
-    if result.returncode:
-        try:
-            detail = json.loads(result.stdout).get("error")
-        except (ValueError, AttributeError):
-            detail = None
-        raise ValueError(detail or "The pipeline failed. Check the server terminal for details.")
-    return json.loads(result.stdout)
+
+def add_name_suggestions(result):
+    """HTTP adapter for optional fuzzy identity suggestions."""
+    return review_action("suggest", result)
 
 
 class Handler(BaseHTTPRequestHandler):
     """HTTP adapter; graph functionality is orchestrated by handler.py."""
+
     def send(self, status, body, mime="application/json"):
         data = json.dumps(body).encode() if mime == "application/json" else body
         self.send_response(status)
@@ -110,7 +64,12 @@ class Handler(BaseHTTPRequestHandler):
         if not self.valid_host():
             return self.send(403, {"error": "Localhost access only."})
         path = urlparse(self.path).path
-        assets = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/javascript"), "/comparison.js": ("comparison.js", "text/javascript"), "/style.css": ("style.css", "text/css")}
+        assets = {
+            "/": ("index.html", "text/html"),
+            "/app.js": ("app.js", "text/javascript"),
+            "/comparison.js": ("comparison.js", "text/javascript"),
+            "/style.css": ("style.css", "text/css"),
+        }
         assets["/review-plan.js"] = ("review-plan.js", "text/javascript")
         assets["/rdf-review.js"] = ("rdf-review.js", "text/javascript")
         try:
@@ -125,19 +84,36 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError as error:
             self.send(400, {"error": str(error)})
         except httpx.HTTPError:
-            self.send(502, {"error": "Cannot read QLever. Check the local server and retry."})
+            self.send(
+                502, {"error": "Cannot read QLever. Check the local server and retry."}
+            )
         except (RuntimeError, OSError) as error:
             self.send(503, {"error": str(error)})
 
     def valid_host(self):
-        return self.headers.get("Host", "") in {f"localhost:{self.server.server_port}", f"127.0.0.1:{self.server.server_port}"}
+        return self.headers.get("Host", "") in {
+            f"localhost:{self.server.server_port}",
+            f"127.0.0.1:{self.server.server_port}",
+        }
 
     def do_POST(self):
         # Require same-origin JSON; other websites cannot trigger LLM requests.
         origin = self.headers.get("Origin")
-        if not self.valid_host() or (origin and origin != "http://" + self.headers.get("Host", "")):
+        if not self.valid_host() or (
+            origin and origin != "http://" + self.headers.get("Host", "")
+        ):
             return self.send(403, {"error": "Cross-origin requests are not allowed."})
-        graph_routes = {"/api/graph/" + action: action for action in ("preview", "confirm", "inspect", "search", "verify", "rebuild")}
+        graph_routes = {
+            "/api/graph/" + action: action
+            for action in (
+                "preview",
+                "confirm",
+                "inspect",
+                "search",
+                "verify",
+                "rebuild",
+            )
+        }
         if self.path != "/api/extract" and self.path not in graph_routes:
             return self.send(404, {"error": "Not found"})
         try:
@@ -150,16 +126,27 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(payload, dict):
                 raise ValueError("Expected a JSON object")
             if self.path in graph_routes:
-                if not secrets.compare_digest(self.headers.get("X-Anywikia-CSRF", ""), WRITE_CSRF):
-                    return self.send(403, {"error": "Reload the page before using graph actions."})
+                if not secrets.compare_digest(
+                    self.headers.get("X-Anywikia-CSRF", ""), WRITE_CSRF
+                ):
+                    return self.send(
+                        403, {"error": "Reload the page before using graph actions."}
+                    )
                 return self.send(200, graph_action(graph_routes[self.path], payload))
             self.send(200, add_name_suggestions(extract(payload.get("text"))))
         except (ValueError, UnicodeDecodeError) as error:
             self.send(400, {"error": str(error)})
         except subprocess.TimeoutExpired:
-            self.send(504, {"error": "Pipeline exceeded five minutes. Try a shorter passage."})
+            self.send(
+                504, {"error": "Pipeline exceeded five minutes. Try a shorter passage."}
+            )
         except httpx.HTTPError:
-            self.send(502, {"error": "Cannot reach the working QLever graph. Check its status and retry."})
+            self.send(
+                502,
+                {
+                    "error": "Cannot reach the working QLever graph. Check its status and retry."
+                },
+            )
         except (RuntimeError, OSError) as error:
             self.send(503, {"error": str(error)})
 

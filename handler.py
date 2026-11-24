@@ -6,6 +6,7 @@ values. The extraction CLI is read-only. graph_action dispatches separately
 confirmed writes, queries and rebuilds to functions/. Run
 `python handler.py "Source passage"` or `python handler.py --setup-graph`.
 """
+
 import argparse
 
 import httpx
@@ -40,15 +41,26 @@ def run_pipeline(text: str) -> ResolvedExtraction:
 
     # 3. Validate the grouped extraction and enrich it directly; never flatten it.
     extraction = Extraction.model_validate(extracted)
-    count = sum(len(getattr(entity, field)) for entity in extraction.entities
-                for field in PROPERTY_FIELDS)
+    count = sum(
+        len(getattr(entity, field))
+        for entity in extraction.entities
+        for field in PROPERTY_FIELDS
+    )
     report(f"Extracted {len(extraction.entities)} keyboard(s), {count} claim(s)")
     with step("Resolving grouped keyboards and values"):
         result = resolve_extraction(extraction, text)
-    warnings = sum(len(entity.warnings) + sum(len(claim.warnings)
-                   for prop in entity.properties.values() for claim in prop.claims)
-                   for entity in result.entities)
-    report(f"Ready: {len(result.entities)} keyboard(s), {count} claim(s), {warnings} review warning(s)")
+    warnings = sum(
+        len(entity.warnings)
+        + sum(
+            len(claim.warnings)
+            for prop in entity.properties.values()
+            for claim in prop.claims
+        )
+        for entity in result.entities
+    )
+    report(
+        f"Ready: {len(result.entities)} keyboard(s), {count} claim(s), {warnings} review warning(s)"
+    )
     return result
 
 
@@ -56,12 +68,21 @@ def main():
     """Read one passage and print readable records or JSON; fail clearly."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("text", nargs="?", default=SAMPLE_TEXT)
-    parser.add_argument("--json", action="store_true", help="Print machine-readable records")
-    parser.add_argument("--quiet", action="store_true", help="Hide progress; errors still appear")
-    parser.add_argument("--setup-graph", action="store_true", help="Initialize/start the persistent local working graph")
+    parser.add_argument(
+        "--json", action="store_true", help="Print machine-readable records"
+    )
+    parser.add_argument(
+        "--quiet", action="store_true", help="Hide progress; errors still appear"
+    )
+    parser.add_argument(
+        "--setup-graph",
+        action="store_true",
+        help="Initialize/start the persistent local working graph",
+    )
     args = parser.parse_args()
     if args.setup_graph:
         import json
+
         print(json.dumps(graph_action("setup"), indent=2))
         return
     configure_progress(quiet=args.quiet)
@@ -74,9 +95,37 @@ def main():
     print_results(facts, as_json=args.json)
 
 
+def review_action(action: str, payload: dict | None = None) -> dict:
+    """Dispatch read-only browser work without HTTP concerns.
+
+    extract: validate text and run the isolated extraction pipeline.
+    inspect: retrieve direct stored values for human comparison.
+    suggest: enrich unresolved identities with optional local candidates.
+    These actions do not mutate RDF. graph_action owns the write lifecycle.
+    """
+    from functions import web_review
+    from functions.similar_names import add_name_suggestions
+
+    payload = payload or {}
+    if action == "extract":
+        return web_review.extract(payload.get("text"))
+    if action == "inspect":
+        return web_review.inspect_entity(payload.get("entity_id"))
+    if action == "suggest":
+        return add_name_suggestions(payload)
+    raise ValueError("Unknown review action.")
+
+
 def graph_action(action, payload=None):
-    """Orchestrate graph functions for the web adapter and setup CLI."""
+    """Dispatch graph lifecycle and review actions to functions.rdf_service.
+
+    setup/query-ui start local services; status/inspect/search/verify read them.
+    preview validates a proposed edit without changing RDF. confirm applies the
+    saved preview only after explicit approval. rebuild exports and replaces the
+    index with backups and recovery. HTTP details stay in web_app.py.
+    """
     from functions import rdf_service
+
     payload = payload or {}
     routes = {
         "setup": lambda: rdf_service.initialize_graph(),
