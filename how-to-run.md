@@ -61,6 +61,18 @@ At four entities or more than twelve claims, compact mode activates automaticall
 It uses collapsed entity summaries and a bounded scrolling pane. The view toggle
 switches between compact and expanded modes without losing edits.
 
+Count properties show **Unit (optional)**. For populated physical measurements,
+enter a unit; missing units display an error and block the new-entity demo.
+Price (P25) uses a clickable currency dropdown with DKK, EUR, USD and GBP. These
+are application choices, not currencies declared by the RDF. No default currency
+is assumed. An unsupported source currency remains visible until you select one.
+Try `The Yamaha P-150 is listed at 500 EUR.` and check the price and currency.
+Draft export is still allowed with missing units; it is not approval to write RDF.
+Existing prices require review of currency and offer context.
+
+The extractor also handles explicit polyphony compounds such as `six-voice` and
+`16-note`, retaining the supporting text and separating amount from unit.
+
 **Use as new entity (demo)** remains available under **Inspect or change match**,
 even after confirmation. It clears the selected ID, restores the extracted name
 unless manually edited, and preserves claim edits. It displays **ENTITY ADDED !** only. Neither edits,

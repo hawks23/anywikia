@@ -153,8 +153,8 @@ No source facts are retrieved from the RDF to complete the extraction.
 
 `property_list.json` records 30 properties from the local RDF, including labels,
 descriptions, Wikibase value types, predicate mappings, and observed datatypes and
-units. `functions/pydantic_models.py` defines a curated set of **23 keyboard
-properties** based on that catalog. Offer, seller, price, date, and stored-query
+units. `functions/pydantic_models.py` defines a curated set of **24 keyboard
+properties**, including price, based on that catalog. Offer, seller, date, and stored-query
 metadata are outside this extraction model. The model is defined in Python; it
 is not regenerated from the RDF or JSON catalog on each request.
 
@@ -172,6 +172,30 @@ Every property is a list of claims with evidence. Unmentioned properties are
 empty lists; repeated or conflicting claims remain separate. Units are copied
 from the source without conversion; an absent unit is `null`. Observed RDF unit
 URIs do not justify inventing a source unit.
+
+Explicit English polyphony compounds such as `six-voice` and `16-note` are
+normalized to numeric values with their stated count units before validation.
+Supporting context is preserved. Ambiguous expressions and conflicting units
+are rejected; this is not general free-text quantity parsing or unit conversion.
+
+The website labels count units **Unit (optional)**. Populated width, depth,
+height, weight and power-consumption claims require a unit. Missing units show
+inline errors and block the new-entity demo, while draft export remains available.
+Extraction itself still permits absent source units.
+
+P25 price claims preserve amounts, source currencies and seller/date context in
+evidence. The currency dropdown offers **DKK, EUR, USD and GBP**, an application
+list rather than an RDF constraint. No currency is selected by default or inferred
+from ambiguous symbols. Unsupported source currencies remain visible for manual
+selection; populated prices require a listed currency. Existing prices always
+require currency and offer-context review; no exchange-rate conversion occurs.
+Offers are not separate extracted records, and prices must not be treated as
+universal attributes of a model when implementing persistence.
+
+`functions/review_validation.py` provides catalog-based unit validation, including
+the currency whitelist, for future RDF create/update endpoints. No write endpoint
+exists yet; it must call this validation before mutation. The validator does not
+establish factual correctness, general unit compatibility or full write readiness.
 
 Extraction-only output is grouped. This shortened example omits empty fields:
 
@@ -385,7 +409,7 @@ does not replace this live test. Provider availability and model behavior can ch
 | --- | --- | --- |
 | Local RDF and QLever | Implemented | Local index, startup helper, separate server/dataset checks |
 | Property catalog | Implemented | 30 RDF definitions recorded in property_list.json |
-| Typed extraction | Implemented | 23 supported properties, grouped entities, supporting sentences for review |
+| Typed extraction | Implemented | 24 supported properties, grouped entities, supporting sentences for review |
 | Grouped resolution | Implemented | Separate typed output; subject per keyboard, mapped PIDs, per-claim value QIDs and candidates |
 | Basic ID lookup | Existing behavior retained | Case-insensitive exact label/alias lookup; unique matches only |
 | Similar-name suggestions | Implemented in website | Lazy cached labels/aliases, Levenshtein distance below 3, top three QIDs, manual selection |

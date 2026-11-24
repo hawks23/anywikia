@@ -17,6 +17,24 @@ from functions.pydantic_models import (
 
 
 class ModelTests(unittest.TestCase):
+    def test_polyphony_compounds_from_llm_json(self):
+        for value, number, unit in [("six-voice", "6", "voice"), ("16-note", "16", "note"), ("sixty-four voices", "64", "voices")]:
+            with self.subTest(value=value):
+                raw = {"entities": [{"name": "Keyboard", "polyphony": [{"value": value, "unit": None, "evidence": value}]}]}
+                result = Extraction.model_validate_json(json.dumps(raw))
+                claim = result.entities[0].polyphony[0]
+                self.assertEqual(claim.value, Decimal(number))
+                self.assertEqual(claim.unit, unit)
+                self.assertEqual(claim.evidence, value)
+                self.assertEqual(raw["entities"][0]["polyphony"][0]["value"], value)
+
+    def test_polyphony_ambiguous_or_conflicting_compounds_rejected(self):
+        for value, unit in [("six or eight voices", None), ("up to 16 notes", None), ("six-voice", "kg"), ("many voices", None)]:
+            with self.subTest(value=value, unit=unit), self.assertRaises(ValidationError):
+                KeyboardExtraction(name="Keyboard", polyphony=[{"value": value, "unit": unit, "evidence": value}])
+        with self.assertRaises(ValidationError):
+            QuantityClaim(value="six-voice", unit=None, evidence="six-voice")
+
     def test_decimal_precision_and_unit(self):
         claim = QuantityClaim(value="1385.00100", unit="mm", evidence="width 1385.00100 mm")
         self.assertIsInstance(claim.value, Decimal)

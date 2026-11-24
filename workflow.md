@@ -77,4 +77,13 @@ The cache is loaded only when needed; candidate keyboards currently require P1.
 Confirmation preserves the source name and original extraction, collapses choices
 and refreshes comparisons. The new-entity demo remains available after confirmation.
 
+Review now includes P25 price with an application-defined DKK/EUR/USD/GBP dropdown.
+Count units are optional; populated measurements require units and prices require
+a listed currency before the new-entity demo can proceed. Draft export remains
+available for incomplete reviews. Existing-price comparisons require currency and
+offer-context review. Future RDF write handlers must call `validate_units_for_rdf`
+before mutation; none currently exists. Explicit polyphony compounds are normalized
+inside extraction validation. These rules refine existing extraction/review nodes;
+the diagram topology remains unchanged.
+
 ![Website review workflow](mermaid-diagram.png)

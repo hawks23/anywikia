@@ -20,6 +20,22 @@ function field(label, value, change) {
   input.addEventListener("input", () => change(input.value));
   wrap.append(input); return wrap;
 }
+function currencyField(value, change) {
+  const wrap = el("label", "Currency (required when price entered)");
+  const select = el("select");
+  const placeholder = el("option", value && !PRICE_CURRENCIES.includes(value)
+    ? `Select currency (source: ${value})` : "Select currency…");
+  placeholder.value = ""; placeholder.disabled = true;
+  select.append(placeholder);
+  for (const currency of PRICE_CURRENCIES) {
+    const option = el("option", currency); option.value = currency;
+    select.append(option);
+  }
+  select.value = PRICE_CURRENCIES.includes(value) ? value : "";
+  select.addEventListener("change", () => change(select.value));
+  wrap.append(select);
+  return wrap;
+}
 let recordCache = new Map();
 function fetchRecord(qid) {
   if (!recordCache.has(qid)) recordCache.set(qid, request(`/api/entities/${encodeURIComponent(qid)}`).catch(error => {
@@ -85,6 +101,19 @@ function render() {
   recordCache = new Map();
   for (const entity of draft.entities) {
     const comparisonViews = [];
+    const unitChecks = [];
+    function validateEntityUnits(report = false) {
+      let firstInvalid = null;
+      for (const check of unitChecks) {
+        if (!check.update() && !firstInvalid) firstInvalid = check.input;
+      }
+      if (firstInvalid && report) {
+        card.open = true;
+        firstInvalid.focus();
+        firstInvalid.reportValidity();
+      }
+      return !firstInvalid;
+    }
     let comparisonVersion = 0;
     async function refreshComparison() {
       const version = ++comparisonVersion;
@@ -174,11 +203,37 @@ function render() {
         fields.append(field("Value", claim.value, value => {
           claim.value = value; claim.value_id = null; claim.value_candidates = [];
           claim.edited = true;
+          validateEntityUnits();
           refreshComparison();
           valueStatus.textContent = prop.value_type === "WikibaseItem" ? "Edited · entity value needs matching" : "Edited value";
         }));
-        if (prop.value_type === "Quantity") fields.append(field("Unit", claim.unit, value => { claim.unit = value || null; claim.edited = true; refreshComparison(); }));
+        const unitMessage = el("p", "", "warning");
+        unitMessage.setAttribute("aria-live", "polite");
+        if (prop.value_type === "Quantity") {
+          const changeUnit = value => {
+            claim.unit = value || null; claim.edited = true;
+            validateEntityUnits(); refreshComparison();
+          };
+          const unitField = prop.property_id === "P25" ? currencyField(claim.unit, changeUnit)
+            : field(requiresMeasurementUnit(prop) ? "Unit (required when value entered)" : "Unit (optional)", claim.unit, changeUnit);
+          const input = unitField.querySelector("input, select");
+          unitMessage.id = `unit-warning-${unitChecks.length}-${draft.entities.indexOf(entity)}`;
+          input.setAttribute("aria-describedby", unitMessage.id);
+          const check = {input, update() {
+            const error = unitValidationError(prop, claim);
+            input.required = requiresMeasurementUnit(prop) && String(claim.value ?? "").trim() !== "";
+            input.setCustomValidity(error);
+            input.setAttribute("aria-invalid", String(Boolean(error)));
+            unitMessage.textContent = error;
+            unitMessage.hidden = !error;
+            return !error;
+          }};
+          unitChecks.push(check); check.update();
+          fields.append(unitField);
+        }
         block.append(fields, valueStatus);
+        if (prop.property_id === "P25") block.append(el("p", "Price is source-specific. Check the seller/date in supporting context; currency choices are configured by this app.", "small"));
+        block.append(unitMessage);
         const comparison = el("div", undefined, "comparison");
         comparison.setAttribute("aria-live", "polite");
         comparisonViews.push({prop, claim, show(result, message, qid) {
@@ -226,6 +281,7 @@ function render() {
     actions.append(el("p", "None of these records is the right keyboard? Keep your extracted values as a new entity draft.", "small"));
     const add = el("button", "Use as new entity (demo)");
     add.onclick = () => {
+      if (!validateEntityUnits(true)) return;
       entity.source_name ??= entity.name;
       if (!entity.name_edited) entity.name = entity.source_name;
       entity.subject_id = null;

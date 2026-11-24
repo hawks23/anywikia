@@ -1,4 +1,17 @@
 "use strict";
+const COUNT_PROPERTIES = ["P1", "P8", "P10", "P12", "P13", "P14", "P15", "P20", "P21", "P22", "P29"];
+// Application choices, not currency constraints declared in the RDF snapshot.
+const PRICE_CURRENCIES = ["DKK", "EUR", "USD", "GBP"];
+function requiresMeasurementUnit(prop) {
+  return prop.value_type === "Quantity" && !COUNT_PROPERTIES.includes(prop.property_id);
+}
+function unitValidationError(prop, claim) {
+  if (prop.property_id === "P25" && String(claim.value ?? "").trim() && !PRICE_CURRENCIES.includes(claim.unit)) {
+    return "Select DKK, EUR, USD or GBP before adding or updating this price in RDF.";
+  }
+  return requiresMeasurementUnit(prop) && String(claim.value ?? "").trim() && !String(claim.unit ?? "").trim()
+    ? "Enter a measurement unit before adding or updating this value in RDF." : "";
+}
 // Pure comparison rules. No RDF writes, inferred units, or numeric rounding.
 function decimalKey(value) {
   const match = String(value).trim().match(/^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/);
@@ -11,9 +24,12 @@ function decimalKey(value) {
   return `${match[1] === "-" ? "-" : ""}${trimmed}e${exponent + digits.length - trimmed.length}`;
 }
 function compareClaim(prop, claim, rows) {
+  const unitError = unitValidationError(prop, claim);
+  if (unitError) return {status:"uncertain", label:unitError, stored:rows.filter(row => row.property.value.endsWith("/" + prop.property_id))};
   const stored = rows.filter(row => row.property.value.endsWith("/" + prop.property_id));
   const result = (status, label) => ({status, label, stored});
   if (!stored.length) return result("new", "New value for this property");
+  if (prop.property_id === "P25") return result("uncertain", "Price needs review · verify currency and offer context");
   if (prop.value_type === "WikibaseItem") {
     if (!claim.value_id) return result("uncertain", "Needs review · value entity unresolved");
     return stored.some(row => row.value.value === `https://keyboards.wikibase.cloud/entity/${claim.value_id}`)
@@ -24,7 +40,7 @@ function compareClaim(prop, claim, rows) {
     if (incoming === null) return result("uncertain", "Needs review · invalid quantity");
     const units = {mm:"Q174789", cm:"Q174728", m:"Q11573", kg:"Q11570", g:"Q41803", w:"Q25236"};
     const token = (claim.unit || "").trim().toLowerCase();
-    const counts = ["P1", "P8", "P10", "P12", "P13", "P14", "P15", "P20", "P21", "P22", "P29"];
+    const counts = COUNT_PROPERTIES;
     const countUnits = ["", "keys", "key", "note", "notes", "voice", "voices", "loudspeakers", "outputs", "inputs", "ports"];
     const expected = counts.includes(prop.property_id) && countUnits.includes(token)
       ? "http://www.wikidata.org/entity/Q199"
@@ -38,4 +54,4 @@ function compareClaim(prop, claim, rows) {
   return stored.some(row => row.value.value === String(claim.value))
     ? result("exists", "Value exists") : result("conflict", "Conflicting value");
 }
-if (typeof module !== "undefined") module.exports = {decimalKey, compareClaim};
+if (typeof module !== "undefined") module.exports = {decimalKey, compareClaim, requiresMeasurementUnit, unitValidationError, PRICE_CURRENCIES};

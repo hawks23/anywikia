@@ -7,8 +7,19 @@ writes RDF. Approved RDF export and actual entity creation remain future work.
 
 ## Follow-up checklist
 
-- [ ] **Scope:** 23 curated keyboard properties from a 30-property catalog.
+- [ ] **Scope:** 24 curated keyboard properties from a 30-property catalog, including price.
   Manufacturers are linked values, not independently extracted top-level records.
+- [ ] **Price:** DKK/EUR/USD/GBP are application-defined currency choices, not
+  RDF-declared constraints. Source prices retain seller/date context in evidence;
+  separate offer records are not extracted. Existing-price comparison remains
+  uncertain pending currency and offer handling. No currency conversion or guessing.
+- [ ] **Units:** count units are optional; populated measurements require units,
+  and prices require a listed currency. Inline errors block the new-entity demo,
+  not draft export. Future write endpoints must invoke `validate_units_for_rdf`;
+  this checks presence/currency membership, not full unit compatibility or truth.
+- [ ] **Polyphony parsing:** explicit English numeric/count compounds are normalized
+  without changing evidence. Ambiguous expressions and conflicting units remain
+  invalid; this is not a general natural-language number parser.
 - [ ] **Entity identity:** exact names/aliases and manual fuzzy suggestions do not
   prove identity. Add contextual/type checks; do not merge variants automatically.
 - [ ] **Fuzzy candidate coverage:** only items with P1 (number of keys) are included.

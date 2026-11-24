@@ -2,6 +2,7 @@
 .evidence-context{border:0;background:transparent;padding:0;margin:10px 0 0}.evidence-context summary{font-size:13px;font-weight:normal;color:var(--muted)}
 
 /* Adaptive review density: bounded scrolling for large batches. */
+select{font:inherit;border:1px solid #85998b;background:#fafcf8;color:var(--ink);border-radius:0;padding:6px 8px;width:100%;min-width:0}
 .review-tools{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .entity-card{padding:0}
 .entity-summary{padding:14px 18px;background:#e1ebdf;overflow-wrap:anywhere}

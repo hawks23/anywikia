@@ -5,14 +5,16 @@ Each property holds a list so repeated or conflicting claims retain their own
 evidence. Empty lists mean no claim was extracted, not that a value is zero.
 Quantity values use Decimal, matching the snapshot's xsd:decimal representation
 even for counts. Entity-valued properties contain source names, never guessed IDs.
-Offer, seller and stored-query properties are intentionally outside this model.
+Offer, seller and stored-query records are outside this model. Price is retained
+as a source claim for review, not as a universal price for a keyboard model.
 """
 import json
+import re
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SourceClaim(BaseModel):
@@ -55,6 +57,38 @@ class KeyboardExtraction(BaseModel):
     """One named keyboard and its supported source claims, grouped by property."""
 
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("polyphony", mode="before")
+    @classmethod
+    def normalize_polyphony_counts(cls, claims):
+        """Split explicit English count compounds without guessing or converting units."""
+        if not isinstance(claims, list):
+            return claims
+        words = dict(zip(
+            "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split(),
+            range(20),
+        ))
+        tens = dict(zip("twenty thirty forty fifty sixty seventy eighty ninety".split(), range(20, 100, 10)))
+        result = []
+        for claim in claims:
+            if not isinstance(claim, dict) or not isinstance(claim.get("value"), str):
+                result.append(claim)
+                continue
+            match = re.fullmatch(r"\s*([a-z]+(?:[ -][a-z]+)?|\d+)\s*[-–‑ ]\s*(voices?|notes?)\s*", claim["value"], re.I)
+            if not match:
+                result.append(claim)
+                continue
+            number, unit = match.group(1).lower(), match.group(2)
+            parts = re.split(r"[ -]", number)
+            amount = int(number) if number.isdigit() else words.get(number, tens.get(number))
+            if amount is None and len(parts) == 2 and parts[0] in tens and parts[1] in words and 1 <= words[parts[1]] <= 9:
+                amount = tens[parts[0]] + words[parts[1]]
+            explicit_unit = claim.get("unit")
+            if amount is not None and (explicit_unit is None or str(explicit_unit).strip().lower().rstrip("s") == unit.lower().rstrip("s")):
+                claim = {**claim, "value": str(amount), "unit": unit if explicit_unit is None else explicit_unit}
+            result.append(claim)
+        return result
+
     name: str = Field(min_length=1, description=(
         "Full musical keyboard model name from the source. Keep model variants "
         "separate. Resolve pronouns only when the referent is clear."))
@@ -120,6 +154,12 @@ class KeyboardExtraction(BaseModel):
         "P21 number of microphone inputs explicitly stated for the instrument."))
     audio_inputs: list[QuantityClaim] = Field(default_factory=list, description=(
         "P22 number of audio inputs explicitly stated; distinguish from outputs."))
+    price: list[QuantityClaim] = Field(default_factory=list, description=(
+        "P25 price explicitly stated for this keyboard. Extract the numeric amount "
+        "and currency exactly as stated, with null if absent. Do not infer currency "
+        "from location or ambiguous symbols. Preserve separate offers/prices and "
+        "their seller/date context in evidence. Exclude accessory prices; do not "
+        "convert currencies or calculate discounts."))
     usb_type_b: list[QuantityClaim] = Field(default_factory=list, description=(
         "P29 number of USB Type B connections explicitly stated. General USB "
         "support does not establish the connector type or number."))
@@ -139,7 +179,7 @@ PROPERTY_FIELDS = {
     "wikidata_item": ("P17", "Wikidata item"), "image": ("P18", "image"),
     "country": ("P19", "country"), "audio_outputs": ("P20", "audio outputs"),
     "microphone_inputs": ("P21", "microphone inputs"), "audio_inputs": ("P22", "audio inputs"),
-    "usb_type_b": ("P29", "USB Type B"),
+    "price": ("P25", "price"), "usb_type_b": ("P29", "USB Type B"),
 }
 
 

@@ -1,5 +1,29 @@
 # Documentation update tracker
 
+## Price extraction and currency dropdown — 2026-11-24
+
+- [x] README.md / how-to-run.md: now 24 extracted properties including P25 price; native dropdown offers application-defined DKK/EUR/USD/GBP. No automatic default or guessing ambiguous symbols. Source currencies outside that list remain visible for manual review. Populated prices require an allowed currency; incomplete drafts can still be exported.
+- [x] limitations.md / workflow.md: source-specific prices retain offer context in evidence; offer records/sellers/dates are not separately extracted. Existing-price comparison stays uncertain pending currency and offer-context handling. Original RDF is unchanged and declares no allowed currency list; writes still unimplemented.
+- [x] Documented that future RDF create/update endpoints must use validate_units_for_rdf, including its P25 currency whitelist, and model price/offer context before persistence.
+- Validation: 56 offline Python tests passed, including grouped price resolution and server-side currency checks; JavaScript comparison/currency tests, app.js syntax, and git diff --check passed. Live CampusAI and browser interaction not rerun.
+
+## Review unit requirements — 2026-11-24
+
+- [x] README.md / how-to-run.md: count units marked optional; populated measurements show required units and inline errors. New-entity demo is blocked until units are supplied. Draft export remains available.
+- [x] limitations.md / workflow.md: RDF writes still absent. Future create/update handlers must call functions.review_validation.validate_units_for_rdf before mutation; it uses catalog types and checks unit presence, not unit compatibility or truth. Extraction continues accepting absent units.
+- Validation: all 54 Python tests, JavaScript comparison/unit-rule checks, both JavaScript syntax checks, and git diff --check passed. Browser interaction and live services not exercised in this pass.
+
+## Polyphony compound parsing fix — 2026-11-24
+
+- [x] README.md / limitations.md: document narrow normalization of explicit English polyphony counts (e.g. six-voice and 16-note) into numeric values and source units; evidence stays unchanged. Ambiguous expressions and conflicting units remain invalid.
+- [x] Extraction model/prompt documentation: explain number-word normalization; no unit conversion or general free-text quantity parsing.
+- Workflow topology and diagram are unchanged; no RDF writes added.
+- Validation: all 51 offline Python tests passed, including JSON parsing of six-voice/16-note, evidence preservation, and rejection of ambiguous or conflicting-unit inputs. Live CampusAI execution not rerun.
+
+## Final pre-push verification — 2026-11-24
+
+All 56 Python tests, JavaScript comparison/currency checks, both frontend syntax checks and whitespace checks passed. Reviewed the existing rendered diagram against workflow.md; its high-level nodes remain valid, with new validation details in the surrounding text. Proposal documents and RDF/index files remain unchanged. Live QLever verification from this Windows process timed out; browser/CampusAI smoke testing was not completed here. No claim of live-service verification is made. Staging is limited to reviewed source, tests and documentation.
+
 Keep this file current as code changes. Record affected documents and concrete
 pending edits during implementation; finish the documentation pass immediately
 before pushing. A checked item means reviewed against current behavior, not just

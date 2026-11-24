@@ -24,6 +24,20 @@ def extraction(name='Yamaha P-150'):
 
 
 class GroupedResolutionTests(unittest.TestCase):
+    def test_price_keeps_amount_currency_and_offer_evidence(self):
+        source = "Shop A lists Keyboard at 500 EUR; Shop B lists it at 600 USD."
+        raw = Extraction.model_validate({"entities": [{"name": "Keyboard", "price": [
+            {"value": "500.00", "unit": "EUR", "evidence": source},
+            {"value": "600", "unit": "USD", "evidence": source}]}]})
+        with patch.object(resolve_local, "search_local", return_value=[{"id": "Q1"}]) as search:
+            result = resolve_local.resolve_extraction(raw, source)
+        search.assert_called_once_with("Keyboard", "item")
+        prop = result.entities[0].properties["price"]
+        self.assertEqual((prop.property_id, prop.value_type), ("P25", "Quantity"))
+        self.assertEqual([c.value for c in prop.claims], [Decimal("500.00"), Decimal("600")])
+        self.assertEqual([c.unit for c in prop.claims], ["EUR", "USD"])
+        self.assertTrue(all(c.evidence == source and c.value_id is None for c in prop.claims))
+
     def test_resolves_subject_once_preserves_conflicts_and_source(self):
         original = extraction()
         before = original.model_dump()
