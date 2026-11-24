@@ -80,11 +80,8 @@ def invalidate_name_cache():
     with _lock:
         _cache, _loaded_at = None, 0.0
 
-# TODO(real entity creation): after a new keyboard is committed AND queryable
-# in QLever, refresh an already-created cache with its generated QID, keyboard
-# name and user-entered aliases (or call invalidate_name_cache for a lazy reload).
-# Keep an unused cache uninitialized. QIDs identify entities; PIDs identify
-# properties. The current ENTITY ADDED ! placeholder must not change this cache.
+# Confirmed graph writes invalidate this cache; rdf_service also refreshes the
+# separate .anywikia/entity_list.json catalog from the live graph.
 
 
 def suggest_names(name):

@@ -59,6 +59,7 @@ class ClaimEdit(BaseModel):
     unit: str | None = Field(default=None, max_length=80)
     value_id: str | None = None
     value_confirmed: bool = False
+    create_value_entity: bool = False
     action: Choice["add", "replace"] = "add"
     statement: str | None = None
     evidence: str = Field(default="", max_length=20000)
@@ -150,6 +151,10 @@ def value_terms(claim, graph):
     if spec["value_type"] == "WikibaseItem":
         if claim.unit and claim.unit.strip():
             raise ValueError(f"{spec['label']}: this property does not take a unit.")
+        if not claim.value_confirmed or not claim.value_id:
+            raise ValueError(
+                f"{spec['label']}: '{value}' needs a confirmed value entity. Search for an existing entity or explicitly choose to create a new one. The keyboard ID is generated automatically."
+            )
         target = entity_uri(claim.value_id)
         if not claim.value_confirmed or not any(graph.triples((target, None, None))):
             raise ValueError(

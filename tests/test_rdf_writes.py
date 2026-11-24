@@ -66,6 +66,54 @@ class RDFWriteTests(unittest.TestCase):
         preview = self.store.preview(request)
         return self.store.commit(preview["preview_id"], True)
 
+    def test_new_keyboard_and_new_color_get_distinct_automatic_ids(self):
+        data = payload()
+        data.update(mode="new", target_id=None, name="New keyboard")
+        data['claims'].append(dict(property_id='P9', value='Maroon', create_value_entity=True, value_confirmed=True))
+        preview = self.store.preview(data)
+        self.assertEqual(preview['entity_id'], 'Q3')
+        self.assertTrue(any(row['action'] == 'create value entity' and row['subject'] == 'Q4' for row in preview['summary']))
+        self.store.commit(preview['preview_id'], True)
+        self.store.commit(preview['preview_id'], True)
+        self.assertIn((KB.Q3, predicate('direct/', 'P9'), KB.Q4), self.runtime.graph)
+        self.assertIn((KB.Q4, RDFS.label, Literal('Maroon', lang='en')), self.runtime.graph)
+        self.assertEqual(self.runtime.updates, 1)
+
+    def test_new_value_rejects_existing_name_and_requires_confirmation(self):
+        data = payload()
+        data['claims'] = [dict(property_id='P6', value='Maker', create_value_entity=True, value_confirmed=True)]
+        with self.assertRaisesRegex(ValueError, 'already has a local entity'):
+            self.store.preview(data)
+        data['claims'][0].update(value='New maker', value_confirmed=False)
+        with self.assertRaisesRegex(ValueError, 'explicitly confirm'):
+            self.store.preview(data)
+        self.assertEqual(self.runtime.updates,0)
+
+    def test_missing_color_id_identifies_property_in_error(self):
+        data = payload(); data['claims'] = [dict(property_id='P9', value='Maroon')]
+        with self.assertRaisesRegex(ValueError, "color: 'Maroon'.*keyboard ID is generated automatically"):
+            self.store.preview(data)
+
+    def test_confirm_refreshes_entity_json_with_labels_and_aliases(self):
+        from functions import rdf_service
+        self.runtime.graph.add((KB.Q2,RDFS.label,Literal('Producent',lang='da')))
+        data = payload(); data.update(mode='new',target_id=None,name='New keyboard',aliases=['New KB'])
+        preview = self.store.preview(data)
+        with patch.object(rdf_service,'runtime',self.runtime), patch.object(rdf_service,'store',self.store):
+            result = rdf_service.confirm_change({'preview_id':preview['preview_id'],'confirmed':True})
+        catalog = json.loads((self.runtime.root/'entity_list.json').read_text())['entities']
+        self.assertTrue(result['verified'])
+        self.assertIn({'id':'Q3','name':'New keyboard','aliases':['New KB']},catalog)
+        self.assertEqual(next(row['name'] for row in catalog if row['id']=='Q2'),'Maker')
+
+    def test_catalog_failure_does_not_misreport_successful_rdf_write(self):
+        from functions import rdf_service
+        preview = self.store.preview(payload())
+        with patch.object(rdf_service,'runtime',self.runtime), patch.object(rdf_service,'store',self.store), patch('functions.entity_catalog.write_entity_catalog',side_effect=OSError('disk full')):
+            result = rdf_service.confirm_change({'preview_id':preview['preview_id'],'confirmed':True})
+        self.assertTrue(result['verified'])
+        self.assertIn('entity_list_warning',result)
+
     def test_add_persists_complete_quantity_and_verifies(self):
         result = self.save(payload())
         self.assertTrue(result["verified"])

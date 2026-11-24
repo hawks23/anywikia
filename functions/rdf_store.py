@@ -16,6 +16,7 @@ from rdflib import BNode, Graph, Literal, RDF, RDFS, SKOS, URIRef, XSD
 from rdflib.compare import to_isomorphic
 
 from functions.qlever_runtime import atomic_json
+from functions.entity_catalog import display_name
 from functions.rdf_models import (
     APP,
     BASE,
@@ -237,9 +238,55 @@ def build_change(graph, request, operation_id):
     available = {r["statement"]: r for r in records(graph, target)}
     replaced = set()
     summary = []
+    created_values = {}
     for claim in request.claims:
         pid = claim.property_id
-        value, unit = value_terms(claim, graph)
+        if claim.create_value_entity:
+            spec = next(
+                (p for p in property_catalog() if p["property_id"] == pid), None
+            )
+            if not spec or spec["value_type"] != "WikibaseItem":
+                raise ValueError(
+                    "Only entity-valued properties can create a value entity."
+                )
+            label = claim.value.strip()
+            if (
+                not claim.value_confirmed
+                or claim.value_id
+                or not 1 <= len(label) <= 250
+            ):
+                raise ValueError(
+                    f"{spec['label']}: explicitly confirm a new value entity with a name (1–250 characters)."
+                )
+            key = label.casefold()
+            if key not in created_values:
+                for pred in (RDFS.label, SKOS.altLabel):
+                    for subject_, existing in updated.subject_objects(pred):
+                        if (
+                            str(subject_).startswith(str(KB) + "Q")
+                            and str(existing).strip().casefold() == key
+                        ):
+                            raise ValueError(
+                                f"{spec['label']}: '{label}' already has a local entity ({subject_}). Search and confirm it instead."
+                            )
+                value_entity = next(identifiers)
+                created_values[key] = value_entity
+                updated.add((value_entity, RDFS.label, Literal(label, lang="en")))
+                updated.add((value_entity, RDF.type, APP.ValueEntity))
+                updated.add((value_entity, APP.operation, operation))
+                summary.append(
+                    {
+                        "property": pid,
+                        "action": "create value entity",
+                        "value": label,
+                        "unit": None,
+                        "subject": str(value_entity).removeprefix(str(KB)),
+                    }
+                )
+            claim = claim.model_copy(
+                update={"value_id": str(created_values[key]).removeprefix(str(KB))}
+            )
+        value, unit = value_terms(claim, updated)
         subject = target
         if claim.action == "replace":
             row = available.get(claim.statement)
@@ -367,7 +414,7 @@ class RDFStore:
             raise ValueError("No such entity in the working graph.")
         return {
             "id": qid,
-            "name": str(graph.value(target, RDFS.label) or qid),
+            "name": display_name(graph, target),
             "statements": records(graph, target),
             "revision": revision(graph),
         }

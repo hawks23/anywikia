@@ -97,7 +97,7 @@ function attachClaimWriteControls(block, entity, prop, claim) {
   if (prop.value_type === "WikibaseItem") {
     const search = el("button", "Search and confirm value entity");
     const candidates = el("div");
-    const matched = el("p", claim.value_confirmed ? `Confirmed: ${claim.value_id}` : "Confirm the value entity if including this property.", "small");
+    const matched = el("p", claim.create_value_entity ? `New value entity: ${claim.value} · ID assigned on save` : claim.value_confirmed ? `Confirmed: ${claim.value_id}` : "Confirm the value entity if including this property.", "small");
     search.onclick = async () => {
       candidates.replaceChildren(el("p", "Searching…"));
       try {
@@ -106,13 +106,24 @@ function attachClaimWriteControls(block, entity, prop, claim) {
         for (const candidate of data.matches) {
           const button = el("button", `Confirm ${candidate.name} (${candidate.id})`);
           button.onclick = () => {
-            claim.value_id = candidate.id; claim.value_confirmed = true; claim.include_change = true;
+            claim.value_id = candidate.id; claim.value_confirmed = true; claim.create_value_entity = false; claim.include_change = true;
             matched.textContent = `Confirmed: ${candidate.name} (${candidate.id})`;
             candidates.replaceChildren(); refresh(); block.dispatchEvent(new Event("draftchange", {bubbles:true}));
           };
           candidates.append(button);
         }
-        if (!data.matches.length) candidates.append(el("p", "No local value entity found. Leave this property unselected.", "warning"));
+        if (!data.matches.length) candidates.append(el("p", "No local value entity found. Create it below or leave this property unselected.", "warning"));
+        const exactMatch = data.matches.some(item => item.name.trim().toLowerCase() === String(claim.value).trim().toLowerCase());
+        if (!exactMatch) {
+          const create = el("button", `Create “${claim.value}” as a new value entity`);
+          create.onclick = () => {
+            if (!confirm(`Create a new ${prop.label} value entity named “${claim.value}”? Its QID will be allocated automatically when you save this keyboard.`)) return;
+            claim.create_value_entity = true; claim.value_confirmed = true; claim.value_id = null; claim.include_change = true;
+            matched.textContent = `New ${prop.label} entity: ${claim.value} · ID assigned on save`;
+            candidates.replaceChildren(); refresh(); block.dispatchEvent(new Event("draftchange", {bubbles:true}));
+          };
+          candidates.append(create);
+        }
       } catch (error) { candidates.replaceChildren(el("p", error.message, "warning")); }
     };
     block.addEventListener("input", () => {
@@ -130,7 +141,7 @@ function writePayload(entity, record) {
     const rows = record.statements.filter(r => r.property_id === prop.property_id);
     const plan = planClaimChange(prop, claim, rows, entity.demo_added);
     claims.push({property_id:prop.property_id, value:String(claim.value ?? ""), unit:claim.unit ?? null,
-      value_id:claim.value_id ?? null, value_confirmed:claim.value_confirmed === true,
+      value_id:claim.value_id ?? null, value_confirmed:claim.value_confirmed === true, create_value_entity:claim.create_value_entity === true,
       action:plan.action, statement:plan.statement, evidence:claim.evidence || "", manual:claim.manual === true || claim.edited === true});
   }
   return {mode:entity.demo_added ? "new" : "existing", confirmed:entity.confirmed === true,
@@ -142,7 +153,7 @@ function selectedDraftSignature(entity) {
   return JSON.stringify({name:entity.name, target:entity.review_match, isNew:!!entity.demo_added,
     confirmed:entity.confirmed, properties:Object.values(entity.properties).map(prop => ({
       id:prop.property_id, claims:prop.claims.filter(c => includedClaim(entity,c)).map(c => ({
-        value:c.value,unit:c.unit,value_id:c.value_id,value_confirmed:c.value_confirmed,
+        value:c.value,unit:c.unit,value_id:c.value_id,value_confirmed:c.value_confirmed,create_value_entity:c.create_value_entity,
         mode:c.save_mode,statement:c.statement,evidence:c.evidence
       }))
     }))});
@@ -204,7 +215,7 @@ function attachEntityWriteControls(entity, body, card) {
       const lines = preview.summary.map(item => {
         const spec = graphStatus.properties.find(p => p.property_id === item.property);
         const old = record.statements.find(r => r.statement === item.replaces);
-        return `${spec?.label || item.property}: ${old ? old.value + " → " : item.action + " "}${item.value} ${item.unit || ""}`;
+        return `${spec?.label || item.property}: ${old ? old.value + " → " : item.action + " "}${item.value} ${item.unit || ""}${item.action === "create value entity" ? " (" + item.subject + ")" : ""}`;
       });
       status.textContent = "Changes checked · waiting for your confirmation.";
       if (!retry && !confirm(`${preview.new_entity ? "Create" : "Update"} ${entity.name} (${preview.entity_id})?\n\n${lines.join("\n")}\n\nThis applies the selected changes to live QLever.`)) {
@@ -218,10 +229,11 @@ function attachEntityWriteControls(entity, body, card) {
       entity.demo_added = false; entity.confirmed = !entity.pending_save.payload || entity.name === entity.pending_save.payload.name; entity.saved_operation = saved.operation_id;
       entity.pending_save = null; entity.write_record = null;
       if (!draftChanged) for (const prop of Object.values(entity.properties)) for (const claim of prop.claims) {
-        claim.include_change = false; claim.edited = false; claim.save_mode = "auto"; claim.statement = null;
+        claim.include_change = false; claim.edited = false; claim.save_mode = "auto"; claim.statement = null; claim.create_value_entity = false; claim.value_confirmed = false;
       }
       entity.save_message = saved.verified ? `✓ Changes applied and verified in QLever · ${saved.entity_id}` : `QLever recorded the update · ${saved.entity_id}, but full verification differs. Query saved values before further changes.`;
       if (!saved.verified && saved.mismatched_predicates?.length) entity.save_message += ` Verification differences: ${saved.mismatched_predicates.map(p => p.split(/[\/#]/).pop()).join(", ")}.`;
+      if (saved.entity_list_warning) entity.save_message += " " + saved.entity_list_warning;
       if (draftChanged) entity.save_message += " Your newer edits are still unsaved; apply them separately.";
       $("verify-entity").value = saved.entity_id;
       $("rebuild-status").textContent = "Live changes saved. Save to keyboards.nt and rebuild below when you are ready.";
@@ -232,7 +244,7 @@ function attachEntityWriteControls(entity, body, card) {
     } catch (error) {
       status.className = "save-status warning";
       status.textContent = `${error.message}${entity.pending_save ? " Click Check previous update to verify or complete the original save; your newer edits will be kept." : " No new save was confirmed by this attempt."}`;
-      apply.textContent = entity.pending_save ? "Check previous update" : "Apply changes to QLever";
+      apply.textContent = entity.pending_save ? "Check previous update" : entity.demo_added ? "Create entity in QLever" : "Apply changes to QLever";
     } finally {
       for (const [node,disabled] of inputs) node.disabled = disabled;
       controls.removeAttribute("aria-busy");

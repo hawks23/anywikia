@@ -46,7 +46,12 @@ function fetchRecord(qid) {
 function recordPanel(candidate, entity, confirmMatch) {
   const choice = el("div", undefined, "candidate-choice");
   const choiceHeader = el("div", undefined, "candidate-header");
-  choiceHeader.append(el("strong", candidate.name || `Local record ${candidate.id}`));
+  const candidateName = el("strong", candidate.name || `Loading name for ${candidate.id}…`);
+  choiceHeader.append(candidateName);
+  graphRequest("inspect", {entity_id:candidate.id}).then(record => {
+    candidate.name = record.name;
+    candidateName.textContent = `${record.name} (${candidate.id})`;
+  }).catch(() => { candidateName.textContent = candidate.name || `Name unavailable (${candidate.id}) · retry confirmation`; });
   choiceHeader.append(el("span", candidate.id, "candidate-id"));
   const confirm = el("button", "Confirm this match");
   confirm.className = "confirm-match";
@@ -242,7 +247,7 @@ function render() {
           });
           const custom = el("button", "Enter my own value"); custom.onclick = () => {
             prop.choice_index = "custom"; prop.choice_resolved = true;
-            claim.value = ""; claim.value_id = null; claim.value_confirmed = false; claim.include_change = true; claim.edited = true;
+            claim.value = ""; claim.value_id = null; claim.value_confirmed = false; claim.create_value_entity = false; claim.include_change = true; claim.edited = true;
             render();
           };
           duplicates.append(custom); block.append(duplicates);
@@ -252,7 +257,7 @@ function render() {
         fields.append(field("Value", claim.value, value => {
           if (prop.extracted_choices) { prop.choice_index = "custom"; prop.choice_resolved = true; block.querySelectorAll("input[type=radio]").forEach(r => { r.checked = false; }); }
           claim.value = value; claim.value_id = null; claim.value_candidates = [];
-          claim.value_confirmed = false;
+          claim.value_confirmed = false; claim.create_value_entity = false;
           claim.edited = true;
           validateEntityUnits();
           refreshComparison();
