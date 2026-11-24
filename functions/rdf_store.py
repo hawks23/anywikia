@@ -4,6 +4,7 @@ The browser never supplies SPARQL or trusted property types. Previews are saved
 server-side with a graph revision, an operation ID and exact RDF deltas. Retry
 after a network timeout verifies that operation instead of allocating another ID.
 """
+
 import json
 import re
 import time
@@ -15,7 +16,17 @@ from rdflib import BNode, Graph, Literal, RDF, RDFS, SKOS, URIRef, XSD
 from rdflib.compare import to_isomorphic
 
 from functions.qlever_runtime import atomic_json
-from functions.rdf_models import APP, BASE, KB, PROV, WB, WriteRequest, entity_uri, property_catalog, value_terms
+from functions.rdf_models import (
+    APP,
+    BASE,
+    KB,
+    PROV,
+    WB,
+    WriteRequest,
+    entity_uri,
+    property_catalog,
+    value_terms,
+)
 
 
 def predicate(kind, pid):
@@ -28,22 +39,32 @@ def revision(graph):
 
 def verification_triples(triples):
     """QLever may return decimal 90 as 90.0; compare numeric value on read-back."""
+
     def term_key(term):
         if isinstance(term, Literal) and term.datatype == XSD.decimal:
             return ("decimal", Decimal(str(term)))
-        if isinstance(term, Literal) and not term.language and term.datatype in (None, XSD.string):
+        if (
+            isinstance(term, Literal)
+            and not term.language
+            and term.datatype in (None, XSD.string)
+        ):
             return ("string", str(term))
         return term
+
     return {tuple(term_key(term) for term in triple) for triple in triples}
 
 
 def verification_report(additions, deletions, graph):
+    """Compare expected deltas to read-back and summarize any mismatch."""
     expected, removed, actual = map(verification_triples, (additions, deletions, graph))
     missing = expected - actual
     remaining = (removed - expected) & actual
-    return {"verified": not missing and not remaining,
-            "missing_triples": len(missing), "remaining_deleted_triples": len(remaining),
-            "mismatched_predicates": sorted({str(t[1]) for t in missing | remaining})}
+    return {
+        "verified": not missing and not remaining,
+        "missing_triples": len(missing),
+        "remaining_deleted_triples": len(remaining),
+        "mismatched_predicates": sorted({str(t[1]) for t in missing | remaining}),
+    }
 
 
 def triples_text(triples):
@@ -67,18 +88,45 @@ def records(graph, target):
             for statement in graph.objects(subject, predicate("", pid)):
                 values = list(graph.objects(statement, predicate("statement/", pid)))
                 for value in values:
-                    nodes = list(graph.objects(statement, predicate("statement/value/", pid)))
-                    units = list(graph.objects(nodes[0], WB.quantityUnit)) if len(nodes) == 1 else []
+                    nodes = list(
+                        graph.objects(statement, predicate("statement/value/", pid))
+                    )
+                    units = (
+                        list(graph.objects(nodes[0], WB.quantityUnit))
+                        if len(nodes) == 1
+                        else []
+                    )
                     unit = units[0] if len(units) == 1 else None
                     quantity_ok = spec["value_type"] != "Quantity" or (
-                        len(nodes) == 1 and len(units) == 1
-                        and set(graph.objects(nodes[0], WB.quantityAmount)) == {value})
-                    qualifiers = any(str(p).startswith(BASE + "prop/qualifier/") for p in graph.predicates(statement))
+                        len(nodes) == 1
+                        and len(units) == 1
+                        and set(graph.objects(nodes[0], WB.quantityAmount)) == {value}
+                    )
+                    qualifiers = any(
+                        str(p).startswith(BASE + "prop/qualifier/")
+                        for p in graph.predicates(statement)
+                    )
                     ranks = set(graph.objects(statement, WB.rank))
-                    rows.append({"statement": str(statement), "subject": str(subject), "property_id": pid,
-                                 "label": spec["label"], "value": str(value), "unit_uri": str(unit) if unit else None,
-                                 "value_id": str(value).removeprefix(str(KB)) if isinstance(value, URIRef) and str(value).startswith(str(KB)) else None,
-                                 "replaceable": not qualifiers and ranks == {WB.NormalRank} and len(values) == 1 and quantity_ok})
+                    rows.append(
+                        {
+                            "statement": str(statement),
+                            "subject": str(subject),
+                            "property_id": pid,
+                            "label": spec["label"],
+                            "value": str(value),
+                            "unit_uri": str(unit) if unit else None,
+                            "value_id": (
+                                str(value).removeprefix(str(KB))
+                                if isinstance(value, URIRef)
+                                and str(value).startswith(str(KB))
+                                else None
+                            ),
+                            "replaceable": not qualifiers
+                            and ranks == {WB.NormalRank}
+                            and len(values) == 1
+                            and quantity_ok,
+                        }
+                    )
     return rows
 
 
@@ -92,15 +140,27 @@ def same_value(stored, value):
 
 
 def next_ids(graph):
-    highest = max((int(str(s)[len(str(KB)) + 1:]) for s in graph.all_nodes()
-                   if re.fullmatch(re.escape(str(KB)) + r"Q[1-9][0-9]*", str(s))), default=0)
+    """Allocate unused local numeric QIDs above those already present in the graph."""
+    highest = max(
+        (
+            int(str(s)[len(str(KB)) + 1 :])
+            for s in graph.all_nodes()
+            if re.fullmatch(re.escape(str(KB)) + r"Q[1-9][0-9]*", str(s))
+        ),
+        default=0,
+    )
     while True:
         highest += 1
         yield KB["Q" + str(highest)]
 
 
-def add_statement(graph, subject, pid, value, unit, evidence, operation, source, manual):
-    statement = URIRef(BASE + "entity/statement/" + subject.split("/")[-1] + "-" + uuid.uuid4().hex)
+def add_statement(
+    graph, subject, pid, value, unit, evidence, operation, source, manual
+):
+    """Attach direct and full statement triples, quantity metadata and review evidence."""
+    statement = URIRef(
+        BASE + "entity/statement/" + subject.split("/")[-1] + "-" + uuid.uuid4().hex
+    )
     graph.add((subject, predicate("", pid), statement))
     graph.add((subject, predicate("direct/", pid), value))
     graph.add((statement, predicate("statement/", pid), value))
@@ -111,7 +171,13 @@ def add_statement(graph, subject, pid, value, unit, evidence, operation, source,
     graph.add((statement, PROV.wasDerivedFrom, reference))
     graph.add((reference, APP.sourceText, Literal(source)))
     graph.add((reference, APP.evidence, Literal(evidence)))
-    graph.add((reference, APP.entryKind, Literal("manual" if manual else "reviewed extraction")))
+    graph.add(
+        (
+            reference,
+            APP.entryKind,
+            Literal("manual" if manual else "reviewed extraction"),
+        )
+    )
     if unit is not None:
         node = URIRef(BASE + "value/" + uuid.uuid4().hex)
         graph.add((statement, predicate("statement/value/", pid), node))
@@ -124,7 +190,9 @@ def add_statement(graph, subject, pid, value, unit, evidence, operation, source,
 def build_change(graph, request, operation_id):
     """Build a new graph and human-readable plan without modifying the input."""
     if not request.confirmed:
-        raise ValueError("Confirm the matched entity or confirm creation before previewing changes.")
+        raise ValueError(
+            "Confirm the matched entity or confirm creation before previewing changes."
+        )
     name = request.name.strip()
     if not name:
         raise ValueError("Entity name cannot be blank.")
@@ -141,8 +209,13 @@ def build_change(graph, request, operation_id):
             raise ValueError("Aliases cannot be blank.")
         for p in (RDFS.label, SKOS.altLabel):
             for s, label in graph.subject_objects(p):
-                if str(s).startswith(str(KB) + "Q") and str(label).strip().casefold() in names:
-                    raise ValueError(f"A matching name or alias already exists: {s}. Review that entity first.")
+                if (
+                    str(s).startswith(str(KB) + "Q")
+                    and str(label).strip().casefold() in names
+                ):
+                    raise ValueError(
+                        f"A matching name or alias already exists: {s}. Review that entity first."
+                    )
         target = next(identifiers)
         updated.add((target, RDFS.label, Literal(name, lang="en")))
         updated.add((target, RDF.type, APP.Keyboard))
@@ -153,9 +226,13 @@ def build_change(graph, request, operation_id):
     else:
         target = entity_uri(request.target_id)
         if not any(graph.triples((target, RDFS.label, None))):
-            raise ValueError("The confirmed entity does not exist in the working graph.")
+            raise ValueError(
+                "The confirmed entity does not exist in the working graph."
+            )
         if not any(str(label) == name for label in graph.objects(target, RDFS.label)):
-            raise ValueError("The reviewed name changed after matching. Confirm the entity again.")
+            raise ValueError(
+                "The reviewed name changed after matching. Confirm the entity again."
+            )
     operation = URIRef("urn:anywikia:operation:" + operation_id)
     available = {r["statement"]: r for r in records(graph, target)}
     replaced = set()
@@ -167,21 +244,51 @@ def build_change(graph, request, operation_id):
         if claim.action == "replace":
             row = available.get(claim.statement)
             if new or not row or row["property_id"] != pid or not row["replaceable"]:
-                raise ValueError("Choose an editable stored statement of this property to replace. Qualified or specially ranked statements require separate handling.")
+                raise ValueError(
+                    "Choose an editable stored statement of this property to replace. Qualified or specially ranked statements require separate handling."
+                )
             if claim.statement in replaced:
-                raise ValueError("The same stored statement cannot be replaced twice in one save.")
+                raise ValueError(
+                    "The same stored statement cannot be replaced twice in one save."
+                )
             replaced.add(claim.statement)
             subject = URIRef(row["subject"])
         # Don't corrupt truthy direct triples when preferred/deprecated ranks exist.
         for statement in graph.objects(subject, predicate("", pid)):
             if set(graph.objects(statement, WB.rank)) != {WB.NormalRank}:
-                raise ValueError("This property has non-normal ranks; automatic changes are not supported.")
+                raise ValueError(
+                    "This property has non-normal ranks; automatic changes are not supported."
+                )
         current = records(updated, target)
-        duplicate = next((r for r in current if r["property_id"] == pid
-                          and same_value(r["value"], value) and r["unit_uri"] == (str(unit) if unit else None)
-                          and (pid != "P25" or any(str(e) == claim.evidence for ref in updated.objects(URIRef(r["statement"]), PROV.wasDerivedFrom) for e in updated.objects(ref, APP.evidence)))), None)
+        duplicate = next(
+            (
+                r
+                for r in current
+                if r["property_id"] == pid
+                and same_value(r["value"], value)
+                and r["unit_uri"] == (str(unit) if unit else None)
+                and (
+                    pid != "P25"
+                    or any(
+                        str(e) == claim.evidence
+                        for ref in updated.objects(
+                            URIRef(r["statement"]), PROV.wasDerivedFrom
+                        )
+                        for e in updated.objects(ref, APP.evidence)
+                    )
+                )
+            ),
+            None,
+        )
         if claim.action == "add" and duplicate:
-            summary.append({"property": pid, "action": "already exists", "value": str(value), "unit": claim.unit})
+            summary.append(
+                {
+                    "property": pid,
+                    "action": "already exists",
+                    "value": str(value),
+                    "unit": claim.unit,
+                }
+            )
             continue
         if claim.action == "replace":
             statement = URIRef(claim.statement)
@@ -189,37 +296,84 @@ def build_change(graph, request, operation_id):
             updated.remove((subject, predicate("", pid), statement))
             updated.remove((statement, None, None))
             # Leave shared value/reference nodes intact. Other statements may use them.
-            other_values = {v for st in updated.objects(subject, predicate("", pid))
-                            for v in updated.objects(st, predicate("statement/", pid))}
+            other_values = {
+                v
+                for st in updated.objects(subject, predicate("", pid))
+                for v in updated.objects(st, predicate("statement/", pid))
+            }
             if old_value not in other_values:
                 updated.remove((subject, predicate("direct/", pid), old_value))
         elif pid == "P25":
             subject = next(identifiers)
             updated.add((subject, RDF.type, APP.Offer))
-            updated.add((subject, RDFS.label, Literal("Reviewed offer for " + name, lang="en")))
-            add_statement(updated, subject, "P24", target, None, claim.evidence, operation, request.source, claim.manual)
-        add_statement(updated, subject, pid, value, unit, claim.evidence, operation, request.source, claim.manual)
-        summary.append({"property": pid, "action": claim.action, "value": str(value), "unit": claim.unit,
-                        "subject": str(subject).split("/")[-1], "replaces": claim.statement})
+            updated.add(
+                (subject, RDFS.label, Literal("Reviewed offer for " + name, lang="en"))
+            )
+            add_statement(
+                updated,
+                subject,
+                "P24",
+                target,
+                None,
+                claim.evidence,
+                operation,
+                request.source,
+                claim.manual,
+            )
+        add_statement(
+            updated,
+            subject,
+            pid,
+            value,
+            unit,
+            claim.evidence,
+            operation,
+            request.source,
+            claim.manual,
+        )
+        summary.append(
+            {
+                "property": pid,
+                "action": claim.action,
+                "value": str(value),
+                "unit": claim.unit,
+                "subject": str(subject).split("/")[-1],
+                "replaces": claim.statement,
+            }
+        )
     updated.add((operation, RDF.type, APP.ConfirmedChange))
     updated.add((operation, APP.target, target))
-    updated.add((operation, PROV.generatedAtTime, Literal(datetime.now(timezone.utc).isoformat(), datatype=XSD.dateTime)))
+    updated.add(
+        (
+            operation,
+            PROV.generatedAtTime,
+            Literal(datetime.now(timezone.utc).isoformat(), datatype=XSD.dateTime),
+        )
+    )
     return updated, str(target).split("/")[-1], summary
 
 
 class RDFStore:
+    """Coordinate previews, idempotent writes and verification against one runtime."""
+
     def __init__(self, runtime):
         self.runtime = runtime
 
     def inspect(self, qid):
+        """Return the entity label, stored statement choices and current graph revision."""
         target = entity_uri(qid)
         graph = self.runtime.snapshot()
         if not any(graph.triples((target, None, None))):
             raise ValueError("No such entity in the working graph.")
-        return {"id": qid, "name": str(graph.value(target, RDFS.label) or qid),
-                "statements": records(graph, target), "revision": revision(graph)}
+        return {
+            "id": qid,
+            "name": str(graph.value(target, RDFS.label) or qid),
+            "statements": records(graph, target),
+            "revision": revision(graph),
+        }
 
     def search(self, text):
+        """Return local entity candidates matching a name, alias or QID."""
         if not isinstance(text, str) or not 1 <= len(text.strip()) <= 250:
             raise ValueError("Enter a name or local QID to search.")
         needle = text.strip().casefold()
@@ -228,11 +382,19 @@ class RDFStore:
         for p in (RDFS.label, SKOS.altLabel):
             for subject, label in graph.subject_objects(p):
                 qid = str(subject).removeprefix(str(KB))
-                if re.fullmatch(r"Q[1-9][0-9]*", qid) and (needle in str(label).casefold() or needle == qid.casefold()):
-                    found[qid] = {"id": qid, "name": str(graph.value(subject, RDFS.label) or label)}
-        return sorted(found.values(), key=lambda r: (r["name"].casefold() != needle, r["name"]))[:30]
+                if re.fullmatch(r"Q[1-9][0-9]*", qid) and (
+                    needle in str(label).casefold() or needle == qid.casefold()
+                ):
+                    found[qid] = {
+                        "id": qid,
+                        "name": str(graph.value(subject, RDFS.label) or label),
+                    }
+        return sorted(
+            found.values(), key=lambda r: (r["name"].casefold() != needle, r["name"])
+        )[:30]
 
     def preview(self, payload):
+        """Validate a request and persist exact RDF deltas without applying them."""
         request = WriteRequest.model_validate(payload)
         with self.runtime.exclusive():
             self.runtime.assert_ready()
@@ -240,15 +402,33 @@ class RDFStore:
             preview_id = uuid.uuid4().hex
             changed, qid, summary = build_change(graph, request, preview_id)
             additions, deletions = set(changed) - set(graph), set(graph) - set(changed)
-            record = {"id": preview_id, "created": time.time(), "status": "preview", "target": qid,
-                      "revision": revision(graph), "additions": triples_text(additions),
-                      "deletions": triples_text(deletions), "summary": summary, "request": request.model_dump()}
+            record = {
+                "id": preview_id,
+                "created": time.time(),
+                "status": "preview",
+                "target": qid,
+                "revision": revision(graph),
+                "additions": triples_text(additions),
+                "deletions": triples_text(deletions),
+                "summary": summary,
+                "request": request.model_dump(),
+            }
             atomic_json(self.runtime.root / "changes" / (preview_id + ".json"), record)
-            return {"preview_id": preview_id, "entity_id": qid, "summary": summary,
-                    "new_entity": request.mode == "new", "expires_in_seconds": 900}
+            return {
+                "preview_id": preview_id,
+                "entity_id": qid,
+                "summary": summary,
+                "new_entity": request.mode == "new",
+                "expires_in_seconds": 900,
+            }
 
     def commit(self, preview_id, confirmed):
-        if confirmed is not True or not isinstance(preview_id, str) or not re.fullmatch(r"[a-f0-9]{32}", preview_id):
+        """Apply one approved preview, or verify its operation marker on retry."""
+        if (
+            confirmed is not True
+            or not isinstance(preview_id, str)
+            or not re.fullmatch(r"[a-f0-9]{32}", preview_id)
+        ):
             raise ValueError("Confirm a valid server-generated preview first.")
         with self.runtime.exclusive():
             self.runtime.assert_ready()
@@ -264,16 +444,28 @@ class RDFStore:
                 # Never reapply an already executed operation, even if later edits superseded it.
                 report = verification_report(additions, deletions, graph)
                 record["verification"] = report
-                record["status"] = "committed" if report["verified"] else "applied_unverified"
+                record["status"] = (
+                    "committed" if report["verified"] else "applied_unverified"
+                )
                 atomic_json(path, record)
-                return {"status": "already_applied", "entity_id": record["target"], "operation_id": preview_id,
-                        **report}
+                return {
+                    "status": "already_applied",
+                    "entity_id": record["target"],
+                    "operation_id": preview_id,
+                    **report,
+                }
             if record["status"] == "committed":
-                raise ValueError("The graph no longer contains this committed change. Inspect it before making a new preview.")
+                raise ValueError(
+                    "The graph no longer contains this committed change. Inspect it before making a new preview."
+                )
             if time.time() - record["created"] > 900 and record["status"] == "preview":
-                raise ValueError("Preview expired; review the current graph and preview again.")
+                raise ValueError(
+                    "Preview expired; review the current graph and preview again."
+                )
             if revision(graph) != record["revision"]:
-                raise ValueError("The graph changed after this preview. Refresh stored values and preview again.")
+                raise ValueError(
+                    "The graph changed after this preview. Refresh stored values and preview again."
+                )
             sparql = f"DELETE {{ {record['deletions']} }} INSERT {{ {record['additions']} }} WHERE {{ }}"
             record["status"] = "submitted"
             atomic_json(path, record)
@@ -293,23 +485,41 @@ class RDFStore:
             if not verified and (operation, RDF.type, APP.ConfirmedChange) in after:
                 record["status"] = "applied_unverified"
                 atomic_json(path, record)
-                return {"status": "applied_unverified", "entity_id": record["target"], "operation_id": preview_id, **report}
+                return {
+                    "status": "applied_unverified",
+                    "entity_id": record["target"],
+                    "operation_id": preview_id,
+                    **report,
+                }
             if not verified:
                 record["status"] = "uncertain"
                 atomic_json(path, record)
-                raise RuntimeError("Update status uncertain. Use Verify or retry this same confirmation; do not create another entity. " + ("QLever did not acknowledge the request." if update_error else "Read-back verification failed."))
+                raise RuntimeError(
+                    "Update status uncertain. Use Verify or retry this same confirmation; do not create another entity. "
+                    + (
+                        "QLever did not acknowledge the request."
+                        if update_error
+                        else "Read-back verification failed."
+                    )
+                )
             record["status"] = "committed"
             atomic_json(path, record)
-            return {"status": "updated", "verified": True, "entity_id": record["target"], "operation_id": preview_id}
+            return {
+                "status": "updated",
+                "verified": True,
+                "entity_id": record["target"],
+                "operation_id": preview_id,
+            }
 
     def verify_query(self, qid, pid=None):
+        """Generate and execute a safe entity/property SELECT with display labels."""
         target = entity_uri(qid)
         allowed = {p["property_id"] for p in property_catalog()}
         if pid is not None and pid not in allowed:
             raise ValueError("Unsupported verification property.")
         # Query templates only. No browser-provided SPARQL or credential is forwarded.
         property_filter = f"FILTER(?property = {KB[pid].n3()})" if pid else ""
-        query = f'''PREFIX kb: <{KB}>
+        query = f"""PREFIX kb: <{KB}>
 PREFIX kbt: <{BASE}prop/direct/>
 PREFIX wb: <{WB}>
 PREFIX rdfs: <{RDFS}>
@@ -322,5 +532,5 @@ SELECT DISTINCT ?subject ?subjectLabel ?property ?propertyLabel ?value ?valueLab
  OPTIONAL {{ ?value rdfs:label ?valueLabel . FILTER(LANG(?valueLabel) = "en") }}
  OPTIONAL {{ ?property wb:claim ?cp ; wb:statementProperty ?sp ; wb:statementValue ?vp .
  ?subject ?cp ?statement . ?statement ?sp ?value ; ?vp ?node . ?node wb:quantityUnit ?unit . }}
-}} LIMIT 200'''
+}} LIMIT 200"""
         return {"query": query, "results": self.runtime.query(query)}
