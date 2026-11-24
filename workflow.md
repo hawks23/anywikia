@@ -14,12 +14,18 @@ flowchart TD
     D -->|New keyboard| F[New entity draft; no QID allocated yet]
     E --> G[Edit or select properties; resolve duplicate values]
     F --> G
-    G --> H[Apply changes or Create entity]
+    G --> V{Entity-valued property}
+    V -->|Existing value| W[Search and explicitly confirm its QID]
+    V -->|Missing value| X[Explicitly create a labeled value entity]
+    V -->|Literal property| H[Apply changes or Create entity]
+    W --> H
+    X --> H
     H --> I[Server validates datatype, units and current graph revision]
     I --> J[User confirms property and value summary]
     J --> K[SPARQL Update with persistent operation ID]
     K --> L[Read back values and report verification status]
-    L --> M[Query saved values with readable labels]
+    L --> CAT[Refresh derived entity_list.json; report cache failures separately]
+    CAT --> M[Query saved values with readable labels]
     L -->|Unknown outcome| R[Check previous update; retain newer draft edits]
     R --> L
     M --> N[Optional: Save to keyboards.nt and rebuild index]
@@ -35,7 +41,9 @@ flowchart TD
 The PNG is a compact companion rendering of the same main steps; the Mermaid
 source above includes the branch and recovery detail. New records receive local
 QIDs, labels and statements only on confirmed save. A price creates a linked
-offer with P24 pointing to the keyboard and P25 carrying amount/currency.
+offer with P24 pointing to the keyboard and P25 carrying amount/currency. Explicitly
+created property-value entities share the keyboard/offer QID allocator; preview
+discloses those IDs before save. The JSON catalog is derived and never allocates IDs.
 
 ## Programmer workflow
 
@@ -52,6 +60,7 @@ flowchart LR
     SERVICE --> STORE[functions/rdf_store.py: preview, update, verification]
     SERVICE --> RUNTIME[functions/qlever_runtime.py: Docker and generations]
     SERVICE --> QUERYUI[functions/qlever_ui.py: query editor]
+    SERVICE --> CATALOG[functions/entity_catalog.py: names and aliases JSON]
     STORE --> MODEL
     STORE --> RUNTIME
     QUERYUI --> RUNTIME

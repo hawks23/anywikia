@@ -78,7 +78,8 @@ verification queries, migration and recovery.
    live graph, builds/verifies a fresh index and switches QLever to it.
 
 A field edit alone never writes RDF. New entity IDs and full statements are
-allocated server-side. Prices create offers linked to keyboards by P24; P25 is
+allocated server-side. Entity-valued properties can explicitly create a missing
+value entity after searching; its label and QID are included in the same save. Prices create offers linked to keyboards by P24; P25 is
 stored on the offer. Existing prices can be replaced by selecting their statement.
 
 ## Persistence and validation
@@ -93,7 +94,7 @@ interrupts queries during the switch. Prior generations and source backups are
 retained. Run setup again to recover an interrupted rebuild.
 
 The server validates property mappings against the actual graph, value datatypes,
-units, confirmed entity references, and the preview's graph revision. Counts are
+units, confirmed existing or explicitly created entity references, and the preview's graph revision. Counts are
 nonnegative integers; length accepts mm/cm/m, mass g/kg, power W, and price
 DKK/EUR/USD/GBP. Count units are optional. Q199 on a physical measurement means
 no measurement unit was specified; it does not imply mm, cm, or kg. URLs,
@@ -103,6 +104,11 @@ If the result is uncertain, **Check previous update** checks/completes the origi
 operation without creating a second entity. Newer draft edits are preserved.
 A recorded update with a verification mismatch is distinguished from a fully
 verified save; diagnostic predicates are retained server-side.
+
+The derived `.anywikia/entity_list.json` lists all labeled local QIDs and aliases.
+It refreshes from the live graph on setup, confirmed saves and rebuilds. It is
+not the source of truth or an ID allocator; it is regenerated after cloning.
+Candidate display names are fetched from the live graph before confirmation.
 
 Keep `.anywikia/`: it holds indexes, persistent updates, private access tokens,
 operation previews, UI state and backups. It is ignored by Git. Browser drafts
@@ -124,6 +130,7 @@ functions/
   resolved_models.py     Grouped resolved records
   similar_names.py       Lazy fuzzy-match cache
   web_review.py          Read-only comparison queries and extraction subprocess
+  entity_catalog.py      Derived entity_list.json with labels and aliases
   rdf_service.py         Graph workflow and background rebuild jobs
   rdf_models.py          Trusted write schema and datatype/unit checks
   rdf_store.py           Preview, SPARQL updates, verification and queries

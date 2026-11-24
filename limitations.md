@@ -5,7 +5,9 @@ extraction, resolution, comparisons, persistence and export/rebuild.
 
 - **Scope:** 24 curated keyboard properties from a 30-property catalog. Seller,
   date, question and stored-query metadata are not editable through the catalog.
-  Manufacturers and other relationship targets must already exist locally.
+  Relationship targets must be confirmed existing local entities or explicitly
+  created as labeled value entities. Creation does not infer a full ontology
+  classification or enrich the new value entity from external sources.
 - **Identity:** exact names/aliases and up to three fuzzy suggestions (distance
   below 3) do not prove identity. Creation checks exact existing names/aliases,
   but cannot guarantee semantic uniqueness. Users confirm matches and creation.
@@ -53,3 +55,10 @@ extraction, resolution, comparisons, persistence and export/rebuild.
 
 Keep original proposals as historical design documents. The exported dataset
 contains user test edits and should not be mistaken for a pristine source dump.
+
+- **Local QID allocation:** uses maximum existing numeric QID plus one, guarded
+  by application locks and revision checks. It is not a durable never-reuse
+  sequence: deleting the highest ID can allow reuse. Independent writers or
+  future upstream imports can collide because local additions use the snapshot's
+  original namespace. A dedicated namespace/central allocator is needed before
+  independently merging datasets or deploying a distributed writer.

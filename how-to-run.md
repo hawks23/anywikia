@@ -129,7 +129,10 @@ apply/query controls stay visible at its bottom on desktop.
 
 Supported units: length mm/cm/m, mass g/kg, power W, price DKK/EUR/USD/GBP.
 Counts are nonnegative integers with optional count labels. Entity references
-must already exist locally. URL, Wikidata ID and media filename checks validate
+require a confirmed local match or explicit new value-entity creation. Use
+**Search and confirm value entity**, then **Create … as a new value entity**
+if appropriate. Keyboard and value-entity QIDs are allocated together on save;
+you never type a new QID. Exact existing names/aliases block duplicate creation. URL, Wikidata ID and media filename checks validate
 syntax, not external existence. Price is attached to a new offer linked to the
 keyboard by P24, consistent with the dataset. Replacing a price edits the selected
 offer's statement. Source text and review evidence accompany new statements.
@@ -244,8 +247,8 @@ QIDs into server memory. It suggests at most three distinct entities with
 Levenshtein distance below 3. Confirm a suggestion manually or choose the new-entity
 action. Records with P1 (key count) or the application Keyboard type are included.
 The cache refreshes on demand after five minutes and is invalidated by writes,
-rebuilds and server restarts; no JSON file is
-created. It is not populated for successful or failed exact queries.
+rebuilds and server restarts. This fuzzy cache remains in memory; the separate
+`.anywikia/entity_list.json` catalog is maintained by the graph service. It is not populated for successful or failed exact queries.
 
 
 ## Verify Q13 and migrate a checkout
@@ -291,3 +294,38 @@ This worked around the observed interpreter startup issue; its underlying WSL
 mount/directory cause was not established. A fresh Linux-filesystem clone is
 recommended. The extraction subprocess still uses the repo as its working
 directory, so test extraction too if using this workaround.
+
+
+## Entity names and automatically generated IDs
+
+Possible-match cards load the graph label before confirmation. All labeled local
+entities and aliases are also exported to `.anywikia/entity_list.json` on setup,
+confirmed save and rebuild. This derived catalog is ignored by Git and regenerated
+from the graph; the exported RDF carries the persistent entities across clones.
+A catalog refresh failure is reported separately from a successful RDF save.
+
+New keyboard, offer and explicitly created property-value entities share one
+local QID allocator: find the largest existing numeric local QID and allocate
+successive IDs. Preview/commit run under the application writer lock; a changed
+graph revision invalidates another preview rather than allowing an ID collision.
+An idempotent retry checks the original operation, so it does not allocate again.
+These are local Keyboards graph IDs, not public Wikidata IDs. External writers
+remain unsupported by the application's concurrency model.
+
+
+## Running tests versus launching the query UI
+
+Run both from the repository root with your environment activated:
+
+```bash
+python test_QLeverUI.py                    # Real server and query editor
+python -m unittest tests.test_query_ui -v  # Mocked launcher tests, no live server
+```
+
+Do not run `python test_query_ui.py` from the tests directory: that bypasses the
+package context needed to import functions/. If a UI port is occupied, inspect
+`docker ps --filter publish=8179` (replace 8179 with the conflicting port), or
+choose a different UI port such as `python test_QLeverUI.py --ui-port 8180`.
+A UI port conflict does not erase the graph on 7072. If 7072 itself is occupied
+by an old checkout, identify and stop that old container before starting the new
+checkout; keep its data directory until migration is verified.

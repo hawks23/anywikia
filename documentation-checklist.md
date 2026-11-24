@@ -62,3 +62,32 @@ block the user's requested publication of the implemented code and documentation
 - [x] Cleanup reviewed and grouped into the requested refactor, readability and
   documentation commits. All 101 Python tests and whitespace checks pass. The main user-flow
   PNG needs no topology change: these edits reorganize implementation boundaries.
+
+
+## Candidate labels, entity catalog and new property-value entities
+
+- [x] Candidate names load from live RDF before user confirmation; English labels
+  are preferred deterministically.
+- [x] functions/entity_catalog.py regenerates .anywikia/entity_list.json on setup,
+  confirmed saves/retries and rebuilds. Failed cache refresh cannot undo or mask
+  an acknowledged RDF write; it produces a separate warning.
+- [x] Entity-valued properties identify missing IDs by property/name and allow
+  explicit creation after search. Keyboard/value/offer IDs share the locked,
+  revision-checked allocator; previews disclose new referenced entities.
+- [x] README, run guide and limitations updated; 106 Python tests and JS checks pass.
+- [x] Workflow creation branch and companion diagram updated for optional value
+  entity creation and catalog refresh. Live visual testing remains outstanding.
+  Changes are prepared in the Windows checkout for the requested push.
+
+
+## Final requested publication
+
+- [x] Launcher error suggests a different port rather than repeating the failed one.
+- [x] Run guide distinguishes the root query-UI launcher from unittest modules,
+  and explains occupied UI/server ports and how to run tests from the repo root.
+- [x] QID allocation limits and namespace/upstream collision concerns documented.
+- [x] No additional exported RDF changes are pending in this checkout. Previously
+  committed snapshots remain included in history; runtime JSON/secrets stay ignored.
+- [x] 106 Python tests plus JavaScript rule, interaction and syntax checks pass.
+- [ ] End-to-end live/browser checks remain limited as described above; this push
+  does not certify production readiness or close those validation gaps.
