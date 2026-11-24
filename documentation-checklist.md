@@ -49,3 +49,16 @@ material. Include exported RDF in requested pushes, not automatic application pu
 
 These limitations are also recorded in README.md and limitations.md. They do not
 block the user's requested publication of the implemented code and documentation.
+
+
+## Readability and orchestration cleanup
+
+- [x] Move comparison SPARQL and extraction subprocess from web_app.py into
+  functions/web_review.py; web adapters route through handler.review_action.
+- [x] Document handler entry points and public RDF store/runtime/service methods.
+- [x] Black-format orchestration, graph modules, launchers and affected tests.
+- [x] README reading order and workflow module diagram include the read-only path.
+- [x] Existing regression suite passes after refactor; functionality is unchanged.
+- [x] Cleanup reviewed and grouped into the requested refactor, readability and
+  documentation commits. All 101 Python tests and whitespace checks pass. The main user-flow
+  PNG needs no topology change: these edits reorganize implementation boundaries.

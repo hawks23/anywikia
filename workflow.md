@@ -42,6 +42,9 @@ offer with P24 pointing to the keyboard and P25 carrying amount/currency.
 ```mermaid
 flowchart LR
     WEB[web_app.py HTTP adapter] --> HANDLER[handler.py graph_action]
+    WEB --> REVIEW[handler.py review_action]
+    REVIEW --> READ[functions/web_review.py: compare and isolated extraction]
+    REVIEW --> SUGGEST[functions/similar_names.py: candidate suggestions]
     SETUP[tests/start_qlever.py] --> HANDLER
     UI[test_QLeverUI.py] --> HANDLER
     HANDLER --> SERVICE[functions/rdf_service.py]

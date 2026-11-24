@@ -123,6 +123,7 @@ functions/
   resolve_local.py        Local entity/name resolution
   resolved_models.py     Grouped resolved records
   similar_names.py       Lazy fuzzy-match cache
+  web_review.py          Read-only comparison queries and extraction subprocess
   rdf_service.py         Graph workflow and background rebuild jobs
   rdf_models.py          Trusted write schema and datatype/unit checks
   rdf_store.py           Preview, SPARQL updates, verification and queries
@@ -139,6 +140,23 @@ keyboards-index/          Versioned RDF and legacy Qleverfile
 The legacy Qleverfile targets 7071 and is retained as a reference. The application
 uses the managed 7072 runtime; its helpers do not use the legacy server settings.
 CLI extraction remains available with `python handler.py "Source passage" --json`.
+
+## Reading the code
+
+Start with `handler.py`: `run_pipeline` coordinates extraction, `review_action`
+coordinates read-only browser helpers, and `graph_action` dispatches persistence
+and lifecycle operations. `web_app.py` translates HTTP requests/responses and
+forwards application operations to that handler. CLI launchers do the same.
+
+Follow an operation into `functions/rdf_service.py`, then its implementation in
+`rdf_models.py` (validation), `rdf_store.py` (RDF), or `qlever_runtime.py` (Docker
+and indexes). Read-only browser work lives in `functions/web_review.py`. Public
+entry points and the runtime/store operations have docstrings explaining purpose
+and side effects. Frontend interactions stay in `frontend/`; they send requests
+rather than implementing backend persistence.
+
+The orchestration and graph modules use conventional Black-formatted Python.
+The full call map and persistence boundaries are in [workflow.md](workflow.md).
 
 ## Limits and testing
 
