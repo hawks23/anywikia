@@ -48,6 +48,7 @@ function attachClaimWriteControls(block, entity, prop, claim) {
   const label = el("label", "Include in this update"); label.prepend(include);
   const message = el("p", "", "change-description");
   const advanced = el("details", undefined, "save-options"); advanced.append(el("summary", "Other save options"));
+  advanced.reviewOwner = claim; advanced.reviewSection = "save-options";
   const choices = el("div");
   const mode = actionSelect([["auto","Update existing value automatically"],["add","Keep existing values and add another"],["replace","Choose a stored value to replace"]], claim.save_mode || "auto", value => {
     claim.save_mode = value; claim.statement = null; claim.include_change = true; include.checked = true;

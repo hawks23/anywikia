@@ -56,6 +56,7 @@ function recordPanel(candidate, entity, confirmMatch) {
   const confirm = el("button", "Confirm this match");
   confirm.className = "confirm-match";
   const details = el("details");
+  details.reviewOwner = candidate; details.reviewSection = "stored-properties";
   confirm.onclick = async () => {
     if (entity.confirming_match) return;
     entity.confirming_match = true;
@@ -68,7 +69,7 @@ function recordPanel(candidate, entity, confirmMatch) {
     confirm.setAttribute("role", "status");
     try {
       const record = await graphRequest("inspect", {entity_id:candidate.id});
-      confirmMatch({id:candidate.id, name:record.name}); details.open = false;
+      confirmMatch({id:candidate.id, name:record.name});
     } catch (error) {
       choice.append(el("p", error.message, "warning"));
     } finally {
@@ -112,13 +113,26 @@ function recordPanel(candidate, entity, confirmMatch) {
 }
 // Compact mode bounds the result pane and shows one expanded entity at a time.
 // Keep the same DOM nodes when switching views so edits and loaded RDF survive.
-function setCompact(compact) {
+let renderedDraft = null;
+function setCompact(compact, resetCards = true) {
   $("results").classList.toggle("compact", compact);
   $("density").textContent = compact ? "Use expanded view" : "Use compact view";
   $("density").setAttribute("aria-pressed", String(compact));
-  for (const card of $("results").querySelectorAll(".entity-card")) card.open = !compact;
+  if (resetCards) for (const card of $("results").querySelectorAll(".entity-card")) card.open = !compact;
 }
 function render() {
+  // UI state belongs to draft objects, not names/QIDs, which can change on save.
+  const sameDraft = renderedDraft === draft;
+  const sections = new WeakMap();
+  const compact = $("results").classList.contains("compact");
+  const scrollTop = $("results").scrollTop;
+  const pageScroll = window.scrollY;
+  if (sameDraft) for (const detail of $("results").querySelectorAll("details")) {
+    if (!detail.reviewOwner) continue;
+    if (!sections.has(detail.reviewOwner)) sections.set(detail.reviewOwner, new Map());
+    sections.get(detail.reviewOwner).set(detail.reviewSection, detail.open);
+  }
+  renderedDraft = draft;
   $("total").textContent = draft.entities.length;
   $("results").replaceChildren();
   $("density").hidden = !draft.entities.length;
@@ -159,6 +173,7 @@ function render() {
     }
     const card = el("details", undefined, "card entity-card");
     card.open = true;
+    card.reviewOwner = entity; card.reviewSection = "card";
     const summary = el("summary", undefined, "entity-summary");
     const summaryName = el("strong", entity.name);
     const propertyCount = Object.values(entity.properties).filter(prop => prop.claims.length).length;
@@ -181,6 +196,7 @@ function render() {
     const originNote = el("p", "", "small");
     const matching = el("details", undefined, "match-choices");
     const matchingTitle = el("summary", entity.confirmed ? "Inspect or change identity" : entity.subject_id ? "Confirm this keyboard match" : entity.subject_candidates.length ? "Choose the matching keyboard" : "Create a new keyboard record");
+    matching.reviewOwner = entity; matching.reviewSection = "matching";
     matching.append(matchingTitle);
     matching.open = !entity.confirmed;
     const unmatchedActions = el("div");
@@ -207,11 +223,11 @@ function render() {
       warnings.hidden = true;
       newEntityMessage.textContent = "";
       newEntityMessage.className = "";
-      matching.open = false;
       matchingTitle.textContent = "Inspect or change match";
       render();
     }
     const nameEditor = el("details", undefined, "name-editor");
+    nameEditor.reviewOwner = entity; nameEditor.reviewSection = "name";
     nameEditor.append(el("summary", "Edit name"));
     nameEditor.append(field("Keyboard name", entity.name, value => {
       entity.name = value; entity.review_match = null; entity.name_edited = true;
@@ -310,6 +326,7 @@ function render() {
         }});
         block.append(comparison);
         const context = el("details", undefined, "evidence-context");
+        context.reviewOwner = claim; context.reviewSection = "evidence";
         context.append(el("summary", "Supporting context"));
         context.append(el("p", claim.evidence, "evidence"));
         block.append(context);
@@ -369,7 +386,15 @@ function render() {
     refreshComparison();
   }
   const claims = draft.entities.reduce((n, entity) => n + Object.values(entity.properties).reduce((sum, prop) => sum + prop.claims.length, 0), 0);
-  setCompact(draft.entities.length >= 4 || claims > 12);
+  setCompact(sameDraft ? compact : draft.entities.length >= 4 || claims > 12, !sameDraft);
+  if (sameDraft) {
+    for (const detail of $("results").querySelectorAll("details")) {
+      const previous = detail.reviewOwner && sections.get(detail.reviewOwner);
+      if (previous?.has(detail.reviewSection)) detail.open = previous.get(detail.reviewSection);
+    }
+    $("results").scrollTop = scrollTop;
+    window.scrollTo({top:pageScroll, left:window.scrollX, behavior:"instant"});
+  }
 }
 $("density").onclick = () => setCompact(!$("results").classList.contains("compact"));
 $("source").addEventListener("input", () => { $("count").textContent = `${$("source").value.length.toLocaleString()} / 20,000`; });

@@ -1,5 +1,16 @@
 # Documentation reconciliation — 2026-11-24
 
+## Pending: preserve review sections during confirmation
+
+- [ ] README.md/how-to-run.md: explain that confirmation and draft rerenders
+  preserve open keyboard cards, nested review sections, the selected compact or
+  expanded view, and scroll position. Fresh extractions use the default layout.
+- [x] Regression coverage executes actual rendering and existing/new identity
+  confirmation handlers with four compact cards, checking open/closed sections,
+  manual density choices, changed names and scroll preservation. Existing save
+  progress/retry interaction tests continue to pass. No live-browser test claimed.
+- [x] Workflow diagrams: no data-flow or persistence changes required.
+
 ## Targeted entity inspection and catalog removal
 
 - [x] Entity catalog removal: update README.md, workflow.md (including catalog

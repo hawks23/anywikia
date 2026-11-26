@@ -17,6 +17,14 @@ class Node {
     for(const n of this.children) { if(selectors.some(s=>s[0]==='.' ? n.className.split(' ').includes(s.slice(1)) : n.tag===s)) result.push(n); result.push(...n.querySelectorAll(selector)); } return result; }
   querySelector(s) { return this.querySelectorAll(s)[0]; }
   closest(selector) { let n=this; while(n) { if(n.className.split(" ").includes(selector.slice(1))) return n; n=n.parent; } return null; }
+  get classList() {
+    return {contains: name => this.className.split(' ').includes(name), toggle: (name, on) => {
+      const classes = new Set(this.className.split(' ').filter(Boolean));
+      if (on) classes.add(name); else classes.delete(name);
+      this.className = [...classes].join(' ');
+    }};
+  }
+  setCustomValidity() {}
   scrollIntoView() {}
 }
 const nodes={}; const $=id=>nodes[id]??=new Node('div');
@@ -88,6 +96,58 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
   await tick();
   assert.equal(namedPanel.querySelector('strong').textContent,'Korg SV-2 88 (Q34)');
   context.graphRequest=originalRequest;
+  // Exercise the real render and confirmation handlers with compact-mode cards.
+  context.window = {scrollY:450, scrollX:0, scrollTo({top}) {this.scrollY=top;}};
+  context.recordCache = new Map();
+  context.fetchRecord = async () => ({properties:[]});
+  context.field = (label, value, change) => {
+    const wrap = new Node('label', label), input = new Node('input');
+    input.value = value; input.addEventListener('input', () => change(input.value));
+    wrap.append(input); return wrap;
+  };
+  vm.runInContext(fs.readFileSync('frontend/comparison.js','utf8'), context);
+  vm.runInContext(appSource.slice(appSource.indexOf('// Compact mode'), appSource.indexOf('$("density").onclick')), context);
+  context.graphRequest = async () => ({name:'Confirmed name', statements:[]});
+  context.draft = {entities:Array.from({length:4}, (_, i) => ({
+    name:`Keyboard ${i}`, subject_id:`Q${i+1}`, subject_candidates:[{id:`Q${i+1}`}], warnings:[],
+    properties:{url:{property_id:'P5', label:'URL', value_type:'Url', claims:[{
+      value:'https://example.com', evidence:'Source', warnings:[], value_candidates:[]
+    }]}}
+  }))};
+  context.render(); await tick();
+  let cards = $('results').querySelectorAll('.entity-card');
+  assert($('results').classList.contains('compact'));
+  assert(cards.every(card => !card.open));
+  cards[2].open = true;
+  cards[2].querySelector('.name-editor').open = true;
+  cards[2].querySelector('.evidence-context').open = true;
+  cards[2].querySelector('.save-options').open = true;
+  $('results').scrollTop = 320;
+  await cards[2].querySelectorAll('button').find(b => b.textContent==='Confirm this match').onclick();
+  await tick();
+  cards = $('results').querySelectorAll('.entity-card');
+  assert.equal(cards[2].open, true, 'confirmed card must remain open');
+  assert(cards.filter((_,i)=>i!==2).every(card=>!card.open), 'other cards must stay closed');
+  for (const section of ['.name-editor','.evidence-context','.save-options','.match-choices']) {
+    assert.equal(cards[2].querySelector(section).open, true, `${section} must stay open`);
+  }
+  assert.equal($('results').scrollTop,320);
+  assert.equal(context.window.scrollY,450);
+  // New-entity confirmation and changing names must retain the same card identity.
+  cards[2].querySelectorAll('button').find(b=>b.textContent==='Confirm this is a new entity').onclick();
+  cards = $('results').querySelectorAll('.entity-card');
+  assert.equal(cards[2].open,true);
+  context.setCompact(false);
+  cards[1].open = false;
+  context.render();
+  cards = $('results').querySelectorAll('.entity-card');
+  assert.equal($('results').classList.contains('compact'),false,'manual density choice must survive render');
+  assert.equal(cards[1].open,false,'manually closed expanded card must stay closed');
+  // A fresh extraction gets its own default layout instead of inheriting old UI state.
+  context.draft = {entities:[context.draft.entities[0]]};
+  context.render();
+  assert.equal($('results').querySelector('.entity-card').open,true);
+  console.log('Render state checks passed: confirmation, new entity, nested sections, density and scroll.');
   console.log('Match confirmation loading and failure recovery checks passed');
   console.log('Interaction checks passed: automatic replacement, selected-only writes, progress, success, second edit, uncertain retry, new entity.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
