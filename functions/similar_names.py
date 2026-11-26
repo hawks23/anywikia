@@ -80,8 +80,7 @@ def invalidate_name_cache():
     with _lock:
         _cache, _loaded_at = None, 0.0
 
-# Confirmed graph writes invalidate this cache; rdf_service also refreshes the
-# separate .anywikia/entity_list.json catalog from the live graph.
+# Confirmed graph writes invalidate this in-memory cache.
 
 
 def suggest_names(name):

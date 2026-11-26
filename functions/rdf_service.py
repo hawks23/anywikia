@@ -17,23 +17,7 @@ _job = None
 def initialize_graph():
     """Start or recover the managed graph without discarding saved updates."""
     result = runtime.initialize()
-    refresh_entity_catalog(result)
     return result
-
-
-def refresh_entity_catalog(result):
-    """Refresh derived JSON from the live graph; never misreport a saved RDF write on cache failure."""
-    from functions.entity_catalog import write_entity_catalog
-
-    try:
-        with runtime.exclusive():
-            result["entity_list"] = write_entity_catalog(
-                runtime.snapshot(), runtime.root
-            )
-    except Exception as error:
-        result["entity_list_warning"] = (
-            f"Entity list refresh failed ({type(error).__name__}); RDF remains authoritative. Retry setup to refresh it."
-        )
 
 
 def initialize_query_ui(port=8178):
@@ -41,7 +25,6 @@ def initialize_query_ui(port=8178):
     from functions.qlever_ui import start_query_ui
 
     result = start_query_ui(runtime, port)
-    refresh_entity_catalog(result)
     return result
 
 
@@ -81,7 +64,6 @@ def confirm_change(payload):
     """Apply a confirmed preview idempotently and invalidate name suggestions."""
     result = store.commit(payload.get("preview_id"), payload.get("confirmed"))
     invalidate_name_cache()
-    refresh_entity_catalog(result)
     return result
 
 
@@ -121,7 +103,6 @@ def rebuild_graph(payload):
         try:
             result = runtime.rebuild(progress)
             invalidate_name_cache()
-            refresh_entity_catalog(result)
             _job = {
                 "status": "complete",
                 "message": "RDF exported and keyboards index rebuilt and verified.",

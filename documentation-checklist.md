@@ -1,5 +1,38 @@
 # Documentation reconciliation — 2026-11-24
 
+## Targeted entity inspection and catalog removal
+
+- [x] Entity catalog removal: update README.md, workflow.md (including catalog
+  diagram nodes), and how-to-run.md to remove generated entity_list.json claims.
+  functions/entity_catalog.py now only provides the display-name helper. Setup,
+  query-UI startup, confirmation and rebuild no longer export a name catalog or
+  perform its extra full snapshot. The earlier completed catalog notes below are
+  historical and superseded by this change. Property validation remains intact.
+- [x] Follow-up live test attempt: Docker pipe access was denied and the QLever
+  endpoint at 127.0.0.1:7072 refused connections even after Docker was started.
+  No successful live-server test is claimed. No generated entity_list.json was
+  present in this Windows checkout to delete; generation has been removed.
+
+- [x] Offline validation: 111 Python tests pass, including five targeted
+  inspection regressions; all three frontend comparison/planning/interaction
+  suites pass. Tested using isolated Windows Python 3.14 environment with
+  compatible dependencies, not the Python 3.13 lock environment.
+- [x] Repository RDF comparison: Q1/Q13/Q34 return the same statement records
+  with 97/171/142 related triples respectively versus 6,928 whole-graph triples.
+- [ ] Live QLever compatibility/browser validation: Docker daemon and port 7072
+  were unavailable; WSL execution was denied. Offline SPARQL execution uses RDFLib.
+
+- [x] README.md and workflow.md: describe graph inspection as one bounded SPARQL
+  query for the selected entity, linked offers, statements and quantity/reference
+  metadata; inspection no longer returns an unused whole-graph revision.
+- [x] limitations.md: distinguish targeted inspection's 100,000-related-triple
+  guard from the unchanged full-snapshot limits in preview, commit, search and
+  rebuild. Do not claim that all graph operations now scale independently of size.
+- [x] Mermaid sources updated to remove catalog generation; inspection remains
+  within the existing review step. The historical PNG is retained.
+- [x] Preserve property_list.json: extraction and write validation actively read
+  this cached catalog. The separate entity_list.json was the unused lookup input.
+
 This review supersedes the earlier implementation queue. Reconcile affected docs
 before each requested push; preserve original proposal documents as historical
 material. Include exported RDF in requested pushes, not automatic application pushes.

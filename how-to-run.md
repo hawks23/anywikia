@@ -247,8 +247,7 @@ QIDs into server memory. It suggests at most three distinct entities with
 Levenshtein distance below 3. Confirm a suggestion manually or choose the new-entity
 action. Records with P1 (key count) or the application Keyboard type are included.
 The cache refreshes on demand after five minutes and is invalidated by writes,
-rebuilds and server restarts. This fuzzy cache remains in memory; the separate
-`.anywikia/entity_list.json` catalog is maintained by the graph service. It is not populated for successful or failed exact queries.
+rebuilds and server restarts. This fuzzy cache remains in memory and is not populated for successful or failed exact queries. No entity-list JSON export is maintained.
 
 
 ## Verify Q13 and migrate a checkout
@@ -298,11 +297,11 @@ directory, so test extraction too if using this workaround.
 
 ## Entity names and automatically generated IDs
 
-Possible-match cards load the graph label before confirmation. All labeled local
-entities and aliases are also exported to `.anywikia/entity_list.json` on setup,
-confirmed save and rebuild. This derived catalog is ignored by Git and regenerated
-from the graph; the exported RDF carries the persistent entities across clones.
-A catalog refresh failure is reported separately from a successful RDF save.
+Possible-match cards load the graph label before confirmation. Inspection queries
+only the entity and its related statement data. Names and aliases remain in the
+live RDF; the exported RDF carries them across clones. The old generated
+`.anywikia/entity_list.json` is no longer written or read and may be deleted if
+present after upgrading. Keep the remaining `.anywikia` runtime files.
 
 New keyboard, offer and explicitly created property-value entities share one
 local QID allocator: find the largest existing numeric local QID and allocate

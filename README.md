@@ -105,10 +105,12 @@ operation without creating a second entity. Newer draft edits are preserved.
 A recorded update with a verification mismatch is distinguished from a fully
 verified save; diagnostic predicates are retained server-side.
 
-The derived `.anywikia/entity_list.json` lists all labeled local QIDs and aliases.
-It refreshes from the live graph on setup, confirmed saves and rebuilds. It is
-not the source of truth or an ID allocator; it is regenerated after cloning.
 Candidate display names are fetched from the live graph before confirmation.
+Entity inspection uses one targeted query for the selected entity, linked offers,
+statements and quantity/reference metadata, without a whole-graph revision hash.
+Exact lookup queries QLever; fuzzy suggestions use a lazy in-memory name cache.
+The unused entity_list.json export is no longer generated or required. Existing
+copies in older checkouts are ignored and can be deleted without changing RDF.
 
 Keep `.anywikia/`: it holds indexes, persistent updates, private access tokens,
 operation previews, UI state and backups. It is ignored by Git. Browser drafts
@@ -130,7 +132,7 @@ functions/
   resolved_models.py     Grouped resolved records
   similar_names.py       Lazy fuzzy-match cache
   web_review.py          Read-only comparison queries and extraction subprocess
-  entity_catalog.py      Derived entity_list.json with labels and aliases
+  entity_catalog.py      Readable graph entity-label helper
   rdf_service.py         Graph workflow and background rebuild jobs
   rdf_models.py          Trusted write schema and datatype/unit checks
   rdf_store.py           Preview, SPARQL updates, verification and queries

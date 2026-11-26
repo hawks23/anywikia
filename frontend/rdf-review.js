@@ -233,7 +233,6 @@ function attachEntityWriteControls(entity, body, card) {
       }
       entity.save_message = saved.verified ? `✓ Changes applied and verified in QLever · ${saved.entity_id}` : `QLever recorded the update · ${saved.entity_id}, but full verification differs. Query saved values before further changes.`;
       if (!saved.verified && saved.mismatched_predicates?.length) entity.save_message += ` Verification differences: ${saved.mismatched_predicates.map(p => p.split(/[\/#]/).pop()).join(", ")}.`;
-      if (saved.entity_list_warning) entity.save_message += " " + saved.entity_list_warning;
       if (draftChanged) entity.save_message += " Your newer edits are still unsaved; apply them separately.";
       $("verify-entity").value = saved.entity_id;
       $("rebuild-status").textContent = "Live changes saved. Save to keyboards.nt and rebuild below when you are ready.";

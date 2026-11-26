@@ -24,8 +24,7 @@ flowchart TD
     I --> J[User confirms property and value summary]
     J --> K[SPARQL Update with persistent operation ID]
     K --> L[Read back values and report verification status]
-    L --> CAT[Refresh derived entity_list.json; report cache failures separately]
-    CAT --> M[Query saved values with readable labels]
+    L --> M[Query saved values with readable labels]
     L -->|Unknown outcome| R[Check previous update; retain newer draft edits]
     R --> L
     M --> N[Optional: Save to keyboards.nt and rebuild index]
@@ -43,7 +42,7 @@ source above includes the branch and recovery detail. New records receive local
 QIDs, labels and statements only on confirmed save. A price creates a linked
 offer with P24 pointing to the keyboard and P25 carrying amount/currency. Explicitly
 created property-value entities share the keyboard/offer QID allocator; preview
-discloses those IDs before save. The JSON catalog is derived and never allocates IDs.
+discloses those IDs before save. IDs are allocated from the live graph; no entity JSON catalog is maintained.
 
 ## Programmer workflow
 
@@ -60,7 +59,7 @@ flowchart LR
     SERVICE --> STORE[functions/rdf_store.py: preview, update, verification]
     SERVICE --> RUNTIME[functions/qlever_runtime.py: Docker and generations]
     SERVICE --> QUERYUI[functions/qlever_ui.py: query editor]
-    SERVICE --> CATALOG[functions/entity_catalog.py: names and aliases JSON]
+    STORE --> LABELS[functions/entity_catalog.py: readable entity labels]
     STORE --> MODEL
     STORE --> RUNTIME
     QUERYUI --> RUNTIME
@@ -73,6 +72,13 @@ extract typed grouped facts, resolve local IDs, retain unresolved facts with
 warnings, and serialize results. The CLI prints those results without writes.
 The website adds lazy fuzzy suggestions and review; comparison is gated on manual
 identity confirmation. Server-side graph operations remain in functions/.
+
+Entity inspection uses a bounded SPARQL query for the selected entity, linked
+P24 offers, supported statements, quantity nodes and references. It returns
+statement choices without downloading or hashing the whole graph. Preview and
+commit still independently read full snapshots and validate graph revisions.
+Confirmed saves invalidate the in-memory fuzzy-name cache without exporting an
+entity-list JSON file or taking an extra snapshot for that export.
 
 Previews are stored server-side with exact RDF deltas, graph revision and operation
 ID. Confirmation rejects stale/expired previews; operation markers make retries

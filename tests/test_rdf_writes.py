@@ -94,25 +94,29 @@ class RDFWriteTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "color: 'Maroon'.*keyboard ID is generated automatically"):
             self.store.preview(data)
 
-    def test_confirm_refreshes_entity_json_with_labels_and_aliases(self):
+    def test_confirm_keeps_entities_in_graph_without_catalog_or_extra_snapshot(self):
         from functions import rdf_service
-        self.runtime.graph.add((KB.Q2,RDFS.label,Literal('Producent',lang='da')))
-        data = payload(); data.update(mode='new',target_id=None,name='New keyboard',aliases=['New KB'])
+        data = payload(); data.update(mode='new', target_id=None, name='New keyboard', aliases=['New KB'])
         preview = self.store.preview(data)
-        with patch.object(rdf_service,'runtime',self.runtime), patch.object(rdf_service,'store',self.store):
-            result = rdf_service.confirm_change({'preview_id':preview['preview_id'],'confirmed':True})
-        catalog = json.loads((self.runtime.root/'entity_list.json').read_text())['entities']
+        with patch.object(rdf_service, 'runtime', self.runtime), patch.object(rdf_service, 'store', self.store), patch.object(self.runtime, 'snapshot', wraps=self.runtime.snapshot) as snapshot, patch.object(rdf_service, 'invalidate_name_cache') as invalidate:
+            result = rdf_service.confirm_change({'preview_id': preview['preview_id'], 'confirmed': True})
         self.assertTrue(result['verified'])
-        self.assertIn({'id':'Q3','name':'New keyboard','aliases':['New KB']},catalog)
-        self.assertEqual(next(row['name'] for row in catalog if row['id']=='Q2'),'Maker')
+        self.assertEqual(snapshot.call_count, 2)
+        invalidate.assert_called_once_with()
+        self.assertIn((KB.Q3, RDFS.label, Literal('New keyboard', lang='en')), self.runtime.graph)
+        self.assertIn((KB.Q3, SKOS.altLabel, Literal('New KB', lang='en')), self.runtime.graph)
+        self.assertFalse((self.runtime.root / 'entity_list.json').exists())
+        self.assertNotIn('entity_list', result)
+        self.assertNotIn('entity_list_warning', result)
 
-    def test_catalog_failure_does_not_misreport_successful_rdf_write(self):
+    def test_setup_returns_runtime_result_without_catalog_snapshot(self):
         from functions import rdf_service
-        preview = self.store.preview(payload())
-        with patch.object(rdf_service,'runtime',self.runtime), patch.object(rdf_service,'store',self.store), patch('functions.entity_catalog.write_entity_catalog',side_effect=OSError('disk full')):
-            result = rdf_service.confirm_change({'preview_id':preview['preview_id'],'confirmed':True})
-        self.assertTrue(result['verified'])
-        self.assertIn('entity_list_warning',result)
+        from unittest.mock import Mock
+        runtime = Mock()
+        runtime.initialize.return_value = {'endpoint': 'local'}
+        with patch.object(rdf_service, 'runtime', runtime):
+            self.assertEqual(rdf_service.initialize_graph(), {'endpoint': 'local'})
+        runtime.snapshot.assert_not_called()
 
     def test_add_persists_complete_quantity_and_verifies(self):
         result = self.save(payload())

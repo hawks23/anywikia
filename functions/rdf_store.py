@@ -15,7 +15,7 @@ from decimal import Decimal, InvalidOperation
 from rdflib import BNode, Graph, Literal, RDF, RDFS, SKOS, URIRef, XSD
 from rdflib.compare import to_isomorphic
 
-from functions.qlever_runtime import atomic_json
+from functions.qlever_runtime import atomic_json, decode_term
 from functions.entity_catalog import display_name
 from functions.rdf_models import (
     APP,
@@ -407,16 +407,41 @@ class RDFStore:
         self.runtime = runtime
 
     def inspect(self, qid):
-        """Return the entity label, stored statement choices and current graph revision."""
+        """Read only this entity, linked offers and their statement metadata.
+
+        Inspection is display data, not a save authorization. Preview and commit
+        independently read and validate the current graph revision.
+        """
         target = entity_uri(qid)
-        graph = self.runtime.snapshot()
+        properties = property_catalog()
+        claims = "|".join(predicate("", p["property_id"]).n3() for p in properties)
+        details = "|".join(
+            [predicate("statement/value/", p["property_id"]).n3() for p in properties]
+            + [PROV.wasDerivedFrom.n3()]
+        )
+        # Bounded paths: keyboard/offer -> statement -> quantity/reference.
+        # Include every predicate on each node so qualifiers, ranks and malformed
+        # quantities still prevent unsafe replacement just as in a full snapshot.
+        query = f"""
+SELECT DISTINCT ?s ?p ?o WHERE {{
+  {target.n3()} (^{predicate("direct/", "P24").n3()})? ?root .
+  ?root ({claims})? ?node .
+  ?node ({details})? ?s .
+  ?s ?p ?o .
+}} LIMIT 100001
+"""
+        rows = self.runtime.query(query)["results"]["bindings"]
+        if len(rows) > 100000:
+            raise ValueError("Entity inspection exceeds 100,000 related triples.")
+        graph = Graph()
+        for row in rows:
+            graph.add(tuple(decode_term(row[key]) for key in ("s", "p", "o")))
         if not any(graph.triples((target, None, None))):
             raise ValueError("No such entity in the working graph.")
         return {
             "id": qid,
             "name": display_name(graph, target),
             "statements": records(graph, target),
-            "revision": revision(graph),
         }
 
     def search(self, text):

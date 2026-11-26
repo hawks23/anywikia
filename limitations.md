@@ -30,6 +30,12 @@ extraction, resolution, comparisons, persistence and export/rebuild.
 - **Validation:** finite numeric values, integer counts, supported units, local
   entity references, URL/ID/media syntax. External existence and truth are not
   verified. New top-level entities require a name and at least one selected value.
+- **Inspection:** entity inspection fetches only the selected entity and related
+  offers/statements/quantity/reference nodes, with a 100,000-related-triple guard.
+  Preview, commit, entity search and rebuild still use full snapshots; this change
+  does not remove their whole-graph size limit. Targeted query equivalence was
+  tested offline against RDFLib and the repository RDF; live QLever compatibility
+  has not yet been verified from the editing environment.
 - **Concurrency:** whole-graph snapshot/revision checks and a process/file lock
   coordinate application writers. External SPARQL writers bypass that lock and
   are unsupported. Snapshots are limited to 100,000 triples.
