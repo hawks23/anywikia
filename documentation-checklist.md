@@ -1,8 +1,40 @@
 # Documentation reconciliation — 2026-11-24
 
+## FastAPI migration — 2026-11-27
+
+- [x] Replace built-in HTTP server with FastAPI/Uvicorn while preserving browser
+  routes, explicit saves, graph locks, extraction subprocess and rebuild job.
+- [x] Label and document the route, request-model and HTTP-protection layers in
+  web_app.py, api_models.py and api_http.py. Keep domain logic in functions/.
+- [x] backend-guide.md: explain the stack, every HTTP call, request fields,
+  responses, errors, side effects, matching/drafts, preview/commit/retry and
+  export/index switching. Include examples, a call diagram and reading order.
+- [x] README.md: update architecture, code map and links to the detailed guide.
+- [x] how-to-run.md: updated dependency install, compatible launcher, direct
+  Uvicorn command, custom ports, one-worker rule, API docs and browser fixture.
+- [x] workflow.md: update programmer diagram for Uvicorn/FastAPI and middleware.
+  Main user/persistence diagram topology is unchanged; historical PNG retained.
+- [x] limitations.md: document single-worker/local deployment, process interruption
+  and request limits. Vector search remains a proposal, not implemented here.
+- [x] Dependency resolution preserves previous pins and adds FastAPI/Uvicorn and
+  their dependencies. Universal resolution targets Python 3.13; installation and
+  tests used isolated Windows Python 3.14.8 in .venv-fastapi, not a WSL 3.13 run.
+- [x] Validation: 119 Python tests, all three JavaScript suites and frontend syntax
+  checks pass. Includes HTTP create/preview/confirm/retry/replace/verify against
+  RDFLib, chunked-body size enforcement, error contracts and access protections.
+- [x] Real Uvicorn localhost smoke: custom port, frontend assets, OpenAPI security
+  schema, invalid source, rejected tokenless rebuild and private-file protection.
+  Temporary server stopped afterward. Dependency consistency and whitespace checked.
+- [ ] Live Docker/QLever/CampusAI and Playwright browser end-to-end checks were
+  not performed for this migration. Playwright is not installed in this checkout.
+  Existing mocked rebuild/recovery tests pass; no production compatibility claimed.
+
+These migration notes describe this Windows checkout. The separate WSL checkout
+has not been rewritten or synchronized, and no RDF source file has been changed.
+
 ## Pending: preserve review sections during confirmation
 
-- [ ] README.md/how-to-run.md: explain that confirmation and draft rerenders
+- [x] README.md/how-to-run.md: explain that confirmation and draft rerenders
   preserve open keyboard cards, nested review sections, the selected compact or
   expanded view, and scroll position. Fresh extractions use the default layout.
 - [x] Regression coverage executes actual rendering and existing/new identity

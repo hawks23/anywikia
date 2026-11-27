@@ -3,6 +3,17 @@
 Anywikia implements reviewed writes and new entity creation, in addition to
 extraction, resolution, comparisons, persistence and export/rebuild.
 
+- **FastAPI deployment:** the backend is a local single-user app served by one
+  Uvicorn worker. It does not provide user accounts or public-service authentication.
+  Host/origin checks and a CSRF token protect local browser calls. Multiple workers
+  need shared token/job state; writer locks alone do not solve that. Avoid reload
+  during writes/rebuilds. A process shutdown can interrupt a background rebuild;
+  existing setup recovery remains necessary. HTTP tests use TestClient and a
+  disposable RDF backend; they do not certify live Docker/CampusAI behavior.
+- **HTTP limits:** JSON bodies are limited to 500,000 received bytes and source
+  text to 20,000 characters. Extraction still has its five-minute subprocess
+  timeout. FastAPI does not accelerate model inference or graph rebuilds.
+
 - **Scope:** 24 curated keyboard properties from a 30-property catalog. Seller,
   date, question and stored-query metadata are not editable through the catalog.
   Relationship targets must be confirmed existing local entities or explicitly

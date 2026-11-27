@@ -48,7 +48,9 @@ discloses those IDs before save. IDs are allocated from the live graph; no entit
 
 ```mermaid
 flowchart LR
-    WEB[web_app.py HTTP adapter] --> HANDLER[handler.py graph_action]
+    UV[Uvicorn localhost HTTP server] --> GUARD[api_http.py request checks]
+    GUARD --> WEB[web_app.py FastAPI routes and api_models validation]
+    WEB --> HANDLER[handler.py graph_action]
     WEB --> REVIEW[handler.py review_action]
     REVIEW --> READ[functions/web_review.py: compare and isolated extraction]
     REVIEW --> SUGGEST[functions/similar_names.py: candidate suggestions]
@@ -87,6 +89,13 @@ A recorded operation with different current triples is reported separately from
 unknown outcomes and fully verified writes.
 
 ## Persistence boundaries
+
+FastAPI changes only the HTTP entry point. Synchronous route functions call the
+existing handler in a thread pool; extraction still runs in a subprocess and
+rebuild still uses the service's background thread. `api_http.py` checks actual
+body bytes, local hosts/origins and graph-action tokens, and preserves JSON error
+messages for the frontend. Run one Uvicorn worker. For the complete route table,
+request examples and a plain-language code walkthrough, see [backend-guide.md](backend-guide.md).
 
 ```mermaid
 flowchart LR

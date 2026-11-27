@@ -61,6 +61,35 @@ waiting messages, and errors appear here when a passage is submitted.
 QLever runs separately at **http://127.0.0.1:7072**.
 `python handler.py --setup-graph` is equivalent to the startup helper.
 
+The website now runs through FastAPI and Uvicorn. After updating this checkout,
+install the updated lock file in the same activated environment:
+
+```bash
+python -m pip install -r requirements.lock.txt
+python web_app.py --port 8000
+```
+
+An equivalent direct server command is:
+
+```bash
+python -m uvicorn web_app:app --host 127.0.0.1 --port 8000 --workers 1 --no-proxy-headers
+```
+
+Choose one launcher, not both. Use `--port 8001` if 8000 is occupied. Run one
+worker because CSRF tokens, name caches and rebuild progress are process-local.
+Do not enable automatic reload while saving or rebuilding. Starting the website
+does not automatically start Docker or QLever. The CLI setup commands above
+remain responsible for that. Restarting the website changes its CSRF token;
+reload the browser before further graph actions.
+
+Visit **http://localhost:8000/docs** for the API reference. Execute GET
+`/api/graph/status`, copy its `csrf` value and enter it through **Authorize** to
+try graph POST calls. Confirmation/rebuild requests in this interface operate on
+the real graph. The raw schema is at `/openapi.json`; the Swagger UI normally
+loads its interface assets from a CDN. The ordinary review frontend is local.
+See [backend-guide.md](backend-guide.md) for every call, its inputs, outputs and
+effects, and the libraries behind it.
+
 1. Paste text or choose **Load example**, then **Extract & match**.
 2. Review the properties grouped under each keyboard. Names, values and units
    are editable; **Supporting context** contains LLM-provided sentences without
@@ -78,6 +107,24 @@ QLever runs separately at **http://127.0.0.1:7072**.
 At four entities or more than twelve claims, compact mode activates automatically.
 It uses collapsed entity summaries and a bounded scrolling pane. The view toggle
 switches between compact and expanded modes without losing edits.
+
+Identity confirmation and draft rerenders preserve open cards, nested review
+sections, the chosen compact/expanded view and scroll position. Starting a fresh
+extraction uses the default layout.
+
+### Disposable browser test
+
+To explore the migrated HTTP/UI flow without CampusAI or real QLever writes:
+
+```bash
+python -m tests.browser_fixture
+```
+
+Open **http://127.0.0.1:8012**. This uses FastAPI/Uvicorn, fake extraction and an
+in-memory RDF graph. Stop it with Ctrl+C; its temporary state is discarded.
+With Playwright and its Chromium browser installed for Node, a second terminal
+can run `node tests/browser_smoke.cjs`. Playwright is an optional development
+tool, not required to run Anywikia. This fixture is not a live QLever lifecycle test.
 
 Count properties show **Unit (optional)**. For populated physical measurements,
 enter a unit; missing or incompatible units block the RDF write preview.

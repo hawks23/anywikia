@@ -10,6 +10,11 @@ replace extracted facts with stored values.
 
 ## Install and run
 
+The backend uses **FastAPI**, served locally by **Uvicorn**. The browser uses plain
+JavaScript, HTML and CSS. CampusAI extracts typed facts; QLever stores the RDF.
+For a step-by-step explanation, API call table, examples and library descriptions,
+read [Understanding the backend](backend-guide.md).
+
 Prerequisite installers: [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/)
 and, optionally, [uv for Python installation](https://docs.astral.sh/uv/getting-started/installation/).
 
@@ -77,6 +82,10 @@ verification queries, migration and recovery.
 6. When ready, click **Save to keyboards.nt and rebuild index**. This exports the
    live graph, builds/verifies a fresh index and switches QLever to it.
 
+Confirmation and draft rerenders preserve open cards, nested sections, your
+compact/expanded view choice and scroll position. Fresh extractions use the
+default layout.
+
 A field edit alone never writes RDF. New entity IDs and full statements are
 allocated server-side. Entity-valued properties can explicitly create a missing
 value entity after searching; its label and QID are included in the same save. Prices create offers linked to keyboards by P24; P25 is
@@ -122,7 +131,9 @@ alongside the application's single-writer workflow.
 
 ```text
 handler.py                Main orchestrator and graph action dispatcher
-web_app.py                Local HTTP adapter and extraction subprocess
+web_app.py                FastAPI routes, frontend files and Uvicorn launcher
+api_models.py             Typed HTTP request fields and strict approval booleans
+api_http.py               Local request protections, body limit and error responses
 test_QLeverUI.py          One-command graph/query-UI launcher
 tests/start_qlever.py     Compatibility graph setup launcher
 functions/
@@ -166,6 +177,10 @@ rather than implementing backend persistence.
 
 The orchestration and graph modules use conventional Black-formatted Python.
 The full call map and persistence boundaries are in [workflow.md](workflow.md).
+The detailed function walkthrough and HTTP contracts are in
+[backend-guide.md](backend-guide.md). With the website running, `/docs` exposes
+the interactive API reference and `/openapi.json` its schema. Use one web worker;
+the runtime remains a local single-user application.
 
 ## Limits and testing
 
