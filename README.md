@@ -65,7 +65,7 @@ verification queries, migration and recovery.
 
 ## Review and save
 
-1. Paste text and choose **Extract & match**. Each card reports distinct properties
+1. Paste text and choose **Extract & match**, or upload/drop one PDF or image to start OCR followed by extraction. Each card reports distinct properties
    extracted. Suggested IDs remain unconfirmed until you inspect the candidate.
 2. Click **Confirm this match**. A spinner appears during lookup; the card then
    says **Now editing on QID** and comparisons become available. Alternatively,
@@ -137,6 +137,7 @@ api_http.py               Local request protections, body limit and error respon
 test_QLeverUI.py          One-command graph/query-UI launcher
 tests/start_qlever.py     Compatibility graph setup launcher
 functions/
+  ocr.py                  PDF/image transcription shared by CLI and /ocr
   extract_input.py        CampusAI extraction and supporting context
   pydantic_models.py      Curated extraction schema and catalog mapping
   resolve_local.py        Local entity/name resolution
@@ -220,3 +221,17 @@ accompany QLever export.
 
 See [workflow.md](workflow.md) for diagrams and
 [documentation-checklist.md](documentation-checklist.md) for release evidence.
+
+
+## PDF and image input
+
+The source panel accepts typed text or one PDF, PNG, JPEG or WebP file (up to
+20 MB). Upload and drag-and-drop both call FastAPI `POST /ocr`, then pass its
+returned text to `/api/extract`. Install updated Python dependencies and Poppler
+(`sudo apt install poppler-utils` in WSL) for PDF conversion. The configured
+CampusAI OCR model must support images. Terminal logs report each completed page.
+
+OCR text appears in the source box. If it exceeds the existing 20,000-character
+extraction limit, it is kept in full and extraction pauses until you shorten it.
+Matching, human review and explicit graph saves follow the existing workflow.
+See [backend-guide.md](backend-guide.md) for the two API calls and their purpose.

@@ -402,22 +402,67 @@ $("sample").onclick = () => {
   $("source").value = "Yamaha manufactured the Yamaha P-150. The Yamaha P-150 has a width of 1385 mm and 88 keys. The Aurora Testboard X9 has 73 keys and a width of 1100 mm.";
   $("source").dispatchEvent(new Event("input"));
 };
-$("run").onclick = async () => {
-  const text = $("source").value.trim();
-  if (!text) { $("status").textContent = "Enter a passage to get started."; $("source").focus(); return; }
+// Both input paths end at /api/extract and create the same review draft.
+async function startExtraction(file = null) {
+  if ($("run").disabled) return;
+  let text = $("source").value.trim();
+  if (!file && !text) { $("status").textContent = "Enter a passage or upload a file."; return; }
+  if (file && (!/\.(pdf|png|jpe?g|webp)$/i.test(file.name) || !file.size || file.size > 20 * 1024 * 1024)) {
+    $("status").textContent = "Choose one PDF, PNG, JPEG or WebP file up to 20 MB."; return;
+  }
   if (draft && !confirm("Start a new extraction? Export your current review first if you want to keep it.")) return;
-  $("run").disabled = true; $("run").textContent = "Working…";
+  const controls = [$("run"), $("source-file"), $("source"), $("sample")];
+  controls.forEach(control => { control.disabled = true; });
+  $("run").textContent = "Working…";
   const start = Date.now();
-  $("status").textContent = "Running checks, extraction and local matching…";
-  const timer = setInterval(() => { $("status").textContent = `Pipeline running · ${Math.floor((Date.now()-start)/1000)}s elapsed. Waiting for extraction and matching…`; }, 1000);
+  let stage = file ? "Reading file with OCR; page progress is in the server terminal" : "Extracting facts and matching names";
+  const showProgress = () => { $("status").textContent = `${stage} · ${Math.floor((Date.now()-start)/1000)}s`; };
+  showProgress();
+  const timer = setInterval(showProgress, 1000);
   try {
+    if (file) {
+      const status = await request("/api/graph/status");
+      const form = new FormData();
+      form.append("file", file);
+      // The browser adds the multipart Content-Type and boundary automatically.
+      const result = await request("/ocr", {method:"POST", headers:{"X-Anywikia-CSRF":status.csrf}, body:form});
+      text = result.text;
+      $("source").value = text;
+      $("source").dispatchEvent(new Event("input"));
+    }
+    // Preserve the complete OCR text; never silently truncate a long document.
+    if (text.length > 20000) throw new Error("OCR text exceeds the 20,000-character extraction limit. The full text is in the source box; shorten it, then click Extract & match.");
+    stage = "Extracting facts and matching names"; showProgress();
     const data = await request("/api/extract", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text})});
     original = data; draft = structuredClone(data); sourceText = text;
     render(); $("download").disabled = false;
     $("status").textContent = `Ready to review · ${data.entities.length} keyboard(s).`;
   } catch (error) { $("status").textContent = error.message; }
-  finally { clearInterval(timer); $("run").disabled = false; $("run").textContent = "Extract & match"; }
-};
+  finally {
+    clearInterval(timer);
+    controls.forEach(control => { control.disabled = false; });
+    $("run").textContent = "Extract & match";
+    $("source-file").value = "";
+  }
+}
+
+$("run").onclick = () => startExtraction();
+$("source-file").addEventListener("change", event => {
+  const file = event.target.files[0];
+  if (file) startExtraction(file);
+});
+$("upload-zone").addEventListener("dragover", event => {
+  event.preventDefault();
+  $("upload-zone").classList.toggle("dragging", !$("run").disabled);
+});
+$("upload-zone").addEventListener("dragleave", () => $("upload-zone").classList.toggle("dragging", false));
+$("upload-zone").addEventListener("drop", event => {
+  event.preventDefault();
+  $("upload-zone").classList.toggle("dragging", false);
+  if ($("run").disabled) return;
+  if (event.dataTransfer.files.length !== 1) { $("status").textContent = "Drop one PDF or image at a time."; return; }
+  startExtraction(event.dataTransfer.files[0]);
+});
 $("download").onclick = () => {
   const data = {format:"anywikia-review-v1", source:sourceText, original, review:draft, rdf_written:draft.entities.some(entity => entity.saved_operation)};
   const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:"application/json"}));

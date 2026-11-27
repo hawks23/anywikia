@@ -46,3 +46,6 @@ typing-extensions==4.16.0
 typing-inspection==0.4.5
 urllib3==2.8.0
 uvicorn==0.54.0
+pdf2image==1.17.1
+pillow==13.0.0
+python-multipart==0.0.34

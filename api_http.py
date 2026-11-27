@@ -1,6 +1,6 @@
 """Shared HTTP protections and browser-readable errors for the local API.
 
-This ASGI middleware reads at most MAX_BODY_BYTES before FastAPI parses JSON.
+This ASGI middleware bounds JSON and multipart bodies before FastAPI parses them.
 ASGI is the request/response interface between Uvicorn and FastAPI. A request
 body can arrive in several messages, so Content-Length alone is not sufficient.
 """
@@ -15,6 +15,7 @@ from starlette.datastructures import Headers, MutableHeaders
 from starlette.exceptions import HTTPException
 
 MAX_BODY_BYTES = 500000
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 
 def error_response(status, message):
@@ -58,22 +59,24 @@ class LocalRequestMiddleware:
         origin = headers.get("origin")
         if origin and origin != "http://" + host:
             return await reject(403, "Cross-origin requests are not allowed.")
-        if scope["path"].startswith("/api/graph/"):
+        is_upload = scope["path"] == "/ocr"
+        if is_upload or scope["path"].startswith("/api/graph/"):
             token = headers.get("x-anywikia-csrf", "")
             if not secrets.compare_digest(token.encode(), self.csrf_token.encode()):
                 return await reject(403, "Reload the page before using graph actions.")
-        if (
-            headers.get("content-type", "").split(";")[0].strip().lower()
-            != "application/json"
-        ):
-            return await reject(400, "Expected JSON")
+        expected_type = "multipart/form-data" if is_upload else "application/json"
+        content_type = headers.get("content-type", "").split(";")[0].strip().lower()
+        if content_type != expected_type:
+            return await reject(400, f"Expected {expected_type}")
+        # Allow multipart boundary/header overhead in addition to the file bytes.
+        body_limit = MAX_UPLOAD_BYTES + 65536 if is_upload else MAX_BODY_BYTES
 
         # Reject a declared oversize body before receiving it, then also count
         # actual bytes to cover chunked requests and incorrect length headers.
         length = headers.get("content-length")
         if length is not None:
             try:
-                if not 0 < int(length) <= MAX_BODY_BYTES:
+                if not 0 < int(length) <= body_limit:
                     return await reject(400, "Request is empty or too large")
             except ValueError:
                 return await reject(400, "Invalid Content-Length")
@@ -83,7 +86,7 @@ class LocalRequestMiddleware:
             if message["type"] == "http.disconnect":
                 return
             chunk = message.get("body", b"")
-            if len(body) + len(chunk) > MAX_BODY_BYTES:
+            if len(body) + len(chunk) > body_limit:
                 return await reject(400, "Request is empty or too large")
             body.extend(chunk)
             if not message.get("more_body", False):

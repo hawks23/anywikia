@@ -47,6 +47,7 @@ is QLever's optimized representation of RDF for answering queries.
 | `api_http.py` | Checks hosts, origins, tokens and body size; converts expected exceptions to browser-readable errors. |
 | `handler.py` | Coordinates the pipeline, read-only review actions and graph actions. Also provides the CLI. |
 | `functions/web_review.py` | Runs extraction in a child process and queries stored direct values for comparison. |
+| `functions/ocr.py` | Converts PDF pages to images, transcribes each image and joins numbered text; shared by CLI and `/ocr`. |
 | `functions/extract_input.py` | Builds the extraction prompt and calls CampusAI using the OpenAI-compatible client. |
 | `functions/pydantic_models.py` | Defines extracted keyboards and quantity/entity/text claims, plus fixed property mappings. |
 | `functions/resolve_local.py` | Looks up exact labels/aliases and attaches local IDs without replacing source facts. |
@@ -98,7 +99,7 @@ Official references: [FastAPI](https://fastapi.tiangolo.com/),
 ## 4. HTTP call reference
 
 All paths below are relative to `http://localhost:8000`. POST bodies use
-`Content-Type: application/json`. Every `/api/graph/*` POST also needs
+`Content-Type: application/json`, except `/ocr`, which uses multipart form data. Every `/api/graph/*` POST and `/ocr` also needs
 `X-Anywikia-CSRF`, copied from the `csrf` field in GET `/api/graph/status`.
 This token is a local browser-request protection, not user authentication.
 
@@ -107,6 +108,7 @@ This token is a local browser-request protection, not user authentication.
 | GET `/` | None | `home()` | Serves `frontend/index.html`. |
 | GET `/app.js`, `/comparison.js`, `/review-plan.js`, `/rdf-review.js`, `/style.css` | None | Explicit asset routes | Serves only these allowed files. |
 | GET `/api/graph/status` | None | `graph_action("status")` → `rdf_service.status()` | `ready`, `message`, `endpoint`, `properties`, `rebuild`, `csrf`. Does not start QLever. |
+| POST `/ocr` | Multipart field `file`: PDF, PNG, JPEG or WebP, up to 20 MB | `ocr_endpoint()` → `transcribe_document()` | `text`: complete numbered transcription. Calls CampusAI once per page; removes temporary upload. No RDF writes. |
 | POST `/api/extract` | `text`, 1–20,000 characters, not whitespace-only | `extract()` → `review_action("extract")`; then `add_name_suggestions()` | Grouped entities and warnings, optionally `name_suggestions` or `suggestion_error`. Calls CampusAI; no RDF writes. |
 | GET `/api/entities/{qid}` | QID in URL | `inspect_entity()` → `review_action("inspect")` | `id` and raw SPARQL property bindings for comparison. Read-only. |
 | POST `/api/graph/inspect` | `entity_id` | `graph_action("inspect")` → `store.inspect()` | `id`, `name`, `statements`, including statement identities and replaceability. Targeted RDF query. |
@@ -255,7 +257,8 @@ starting Docker whenever an app is imported or an HTTP worker restarts.
 
 Requests must address localhost/127.0.0.1 on the actual serving port. POST origins,
 when supplied, must match. Graph POSTs require the current token. Body bytes are
-counted up to 500,000, including chunked requests, before JSON parsing. Static
+counted up to 500,000 for JSON requests, including chunked requests, before parsing.
+The `/ocr` multipart limit is 20 MB plus 64 KiB overhead. Static
 routes expose an allowlist, not the repository directory. Responses carry no-store
 and nosniff headers. This remains a local, single-user app, not an authenticated
 public service. CORS is not enabled and the launcher ignores proxy headers.
@@ -294,3 +297,46 @@ uses real FastAPI/Uvicorn with in-memory RDF and fake extraction. These checks d
 not establish live CampusAI output quality or Docker/QLever rebuild compatibility.
 See [how-to-run.md](how-to-run.md) for test commands and [limitations.md](limitations.md)
 for the remaining operational limits.
+
+
+## File input: the OCR endpoint
+
+The input flow is deliberately two simple API calls:
+
+```text
+Typed text --------------------------------> POST /api/extract
+PDF/image -> POST /ocr -> {text} -----------> POST /api/extract
+                                              |
+                                     matching and review draft
+```
+
+`web_app.ocr_endpoint(file: UploadFile)` accepts one multipart upload. FastAPI
+uses `python-multipart` to parse that request. The endpoint checks its extension
+and size, copies it to a temporary file with a fixed name, and calls the existing
+`transcribe_document(path)`. A temporary directory is used only to bridge the
+upload to this file-path function; the OCR implementation itself stays simple.
+The directory is removed whether transcription succeeds or raises an error.
+
+For PDFs, `pdf2image.convert_from_path` produces Pillow images. For an image input,
+Pillow opens one image. The same page loop sends each image to CampusAI, logs
+completion and combines strings with page numbers. Rendering all pages at once
+uses memory proportional to document size. OCR is called in a synchronous FastAPI
+route, which runs in the thread pool; per-page logs are not streamed to the browser.
+
+`frontend/app.js` has one `startExtraction(file = null)` function. File-picker and
+drop events both call it. It uses `FormData` to upload the file without manually
+setting Content-Type (the browser must supply the multipart boundary). It gets
+the current CSRF token from graph status, calls `/ocr`, fills the text box, then
+uses the unchanged JSON `/api/extract` call. Text input skips the OCR step.
+
+`api_http.py` permits multipart only for `/ocr`, requires its CSRF token and
+checks local host/origin as before. Upload bodies allow 20 MB plus 64 KiB for
+multipart overhead; the endpoint checks that the actual file is no more than
+20 MB. Other POSTs retain the 500,000-byte JSON limit. Missing Poppler returns 503,
+invalid files 400, CampusAI failures 502 and OCR timeouts 504, all as `{error}`.
+
+The frontend retains the entire OCR text if it exceeds the extraction endpoint's
+20,000-character limit. It pauses with an explanation rather than truncating or
+splitting facts automatically. The user can shorten it and submit text normally.
+No matching, review or RDF-save code is duplicated or exposed as extra endpoints
+in this change. Internal helper functions remain ordinary Python calls.

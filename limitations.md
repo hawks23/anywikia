@@ -79,3 +79,11 @@ contains user test edits and should not be mistaken for a pristine source dump.
   future upstream imports can collide because local additions use the snapshot's
   original namespace. A dedicated namespace/central allocator is needed before
   independently merging datasets or deploying a distributed writer.
+
+- **Uploaded sources:** one PDF/PNG/JPEG/WebP up to 20 MB; PDF rendering needs
+  Poppler and OCR needs a vision-capable CampusAI model. Every page makes a model
+  request; pdf2image holds rendered pages in memory. Long OCR output remains
+  subject to the 20,000-character extraction limit, with full text retained for
+  editing. There is no automatic batching or browser per-page progress stream.
+  The 500,000-byte JSON body limit excludes `/ocr`, whose multipart body limit is
+  20 MB plus form overhead. Uploaded files are not retained after the request.

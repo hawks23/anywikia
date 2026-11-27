@@ -8,13 +8,15 @@ FastAPI's thread pool. See backend-guide.md for a complete call walkthrough.
 import argparse
 from pathlib import Path
 import secrets
+import shutil
+import tempfile
 
-from fastapi import FastAPI, Request, Security
+from fastapi import FastAPI, Request, Security, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
 import uvicorn
 
-from api_http import LocalRequestMiddleware, install_error_handlers
+from api_http import LocalRequestMiddleware, install_error_handlers, MAX_UPLOAD_BYTES
 from api_models import (
     ConfirmRequest,
     EntityRequest,
@@ -30,7 +32,7 @@ ROOT = Path(__file__).resolve().parent
 csrf_header = APIKeyHeader(
     name="X-Anywikia-CSRF",
     auto_error=False,
-    description="Copy csrf from GET /api/graph/status. Required for every graph POST.",
+    description="Copy csrf from GET /api/graph/status. Required for /ocr and every graph POST.",
 )
 
 
@@ -96,6 +98,54 @@ def create_app():
     def extract_endpoint(body: ExtractionRequest):
         """Extract typed facts, resolve exact IDs, then suggest similar names."""
         return add_name_suggestions(extract(body.text))
+
+    @application.post("/ocr", tags=["Extraction"], dependencies=[Security(csrf_header)])
+    def ocr_endpoint(file: UploadFile) -> dict[str, str]:
+        """Transcribe one uploaded PDF/image and return {text}; does not write RDF.
+
+        The browser sends this text to /api/extract next. Keep the OCR function
+        independent of HTTP so the same function still works from the terminal.
+        """
+        from functions.ocr import transcribe_document
+        from openai import OpenAIError, APITimeoutError
+        from pdf2image.exceptions import (
+            PDFInfoNotInstalledError,
+            PDFPageCountError,
+            PDFSyntaxError,
+        )
+        from PIL import UnidentifiedImageError
+
+        suffix = Path(file.filename or "").suffix.lower()
+        if suffix not in {".pdf", ".png", ".jpg", ".jpeg", ".webp"}:
+            raise ValueError("Upload a PDF, PNG, JPEG or WebP file.")
+        if not file.size or file.size > MAX_UPLOAD_BYTES:
+            raise ValueError("Upload one nonempty file up to 20 MB.")
+        # A fixed temporary filename avoids using user-supplied paths on disk.
+        with tempfile.TemporaryDirectory(prefix="anywikia-upload-") as directory:
+            path = Path(directory) / ("source" + suffix)
+            with path.open("wb") as target:
+                shutil.copyfileobj(file.file, target)
+            try:
+                return {"text": transcribe_document(path)}
+            except PDFInfoNotInstalledError as error:
+                raise HTTPException(
+                    503, "PDF OCR needs Poppler: sudo apt install poppler-utils"
+                ) from error
+            except (PDFPageCountError, PDFSyntaxError, UnidentifiedImageError) as error:
+                raise HTTPException(
+                    400,
+                    "Cannot read this file. Upload a valid image or an unprotected PDF.",
+                ) from error
+            except APITimeoutError as error:
+                raise HTTPException(
+                    504,
+                    "CampusAI OCR timed out. Check the service and network connection.",
+                ) from error
+            except OpenAIError as error:
+                raise HTTPException(
+                    502,
+                    "CampusAI OCR failed. Check your API configuration and that the model supports images.",
+                ) from error
 
     @application.get("/api/entities/{qid}", tags=["Review"])
     def compare_endpoint(qid: str):

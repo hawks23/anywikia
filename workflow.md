@@ -8,6 +8,9 @@ proposals are historical plans. See [how-to-run.md](how-to-run.md) for commands.
 ```mermaid
 flowchart TD
     A[Paste keyboard text] --> B[Extract supported properties with CampusAI]
+    UP[Upload or drop PDF/image] --> OCR[POST /ocr: transcribe each page]
+    OCR --> TEXT[Put returned text in source box]
+    TEXT --> B
     B --> C[Show possible local matches and original evidence]
     C --> D{User confirms identity}
     D -->|Existing keyboard| E[Now editing on QID; enable RDF comparisons]
@@ -110,3 +113,19 @@ flowchart LR
 No automatic Git push occurs. Runtime state and credentials remain ignored.
 The managed graph and the managed query UI use 7072 and 8178 respectively; the
 website uses 8000. Legacy Qleverfile port 7071 does not configure these helpers.
+
+
+## Upload to OCR to extraction
+
+The frontend's `startExtraction(file)` handles both input paths. For typed text it
+calls `/api/extract` directly. For an uploaded/dropped file it calls `/ocr` first,
+places the returned transcription in the source box, then calls `/api/extract`.
+The resulting review draft, matching, confirmation, writes and rebuild are the
+same as before. `POST /ocr` receives multipart form field `file` and returns
+`{"text": "Page 1\n\n..."}`. It calls the existing
+`functions.ocr.transcribe_document()`; PDFs use pdf2image and sequential vision
+requests with per-page completion logs in the terminal. No RDF is changed by OCR.
+
+OCR is a separate API entry point, not a second implementation of the OCR logic.
+The CLI and website share the same Python function. The browser calls the two
+endpoints sequentially; the backend does not call its own HTTP endpoints.

@@ -375,3 +375,53 @@ choose a different UI port such as `python test_QLeverUI.py --ui-port 8180`.
 A UI port conflict does not erase the graph on 7072. If 7072 itself is occupied
 by an old checkout, identify and stop that old container before starting the new
 checkout; keep its data directory until migration is verified.
+
+
+## Standalone image and PDF transcription (OCR)
+
+`functions/ocr.py` has three functions:
+
+1. `main()` reads the input path.
+2. `transcribe_document()` loads a PDF with `pdf2image.convert_from_path()`, or
+   opens an image with Pillow. It loops through the images, numbers them from 1,
+   calls `transcribe_image()`, and joins the returned strings.
+3. `transcribe_image()` encodes one image as PNG/base64, sends a Chat Completions
+   vision request, and returns the response text.
+
+PDF input becomes a list of images in memory. Each page is sent separately and
+logs `OCR complete on page N of TOTAL` only after its request succeeds. Numbering
+restarts for each input. Output is one string with `Page 1`, `Page 2`, etc.
+There are no page-range, resolution or quiet options and no temporary-image helpers.
+This simple implementation loads all PDF pages in memory, so large PDFs need more RAM.
+
+Install the new Python dependencies in the active environment with
+`uv pip install --python .venv/bin/python -r requirements.lock.txt`.
+PDF conversion also requires Poppler: `sudo apt install poppler-utils` in WSL.
+
+Run `python functions/ocr.py document.pdf` or provide an image path instead.
+With no argument it uses `image.png` in the project root. The original transcription
+prompt is unchanged. The existing CampusAI key, URL and model settings are used;
+`CAMPUSAI_OCR_MODEL` can select the vision model separately. The model must support
+images. `LLM_TIMEOUT` and `LLM_MAX_TOKENS` retain their defaults of 180 and 8192;
+OCR no longer has a separate connection-timeout setting or progress-thread helper.
+This command returns transcription only; it does not write RDF.
+
+
+## Upload a document through the website
+
+After installing the updated lock file, restart `python web_app.py` and reload
+the browser. `python-multipart` enables FastAPI file uploads; pdf2image/Pillow
+handle images, and Poppler is required for PDFs.
+
+Paste text and click **Extract & match**, or choose/drop one file in **Or upload /
+drop a PDF or image**. Choosing/dropping the file immediately starts OCR and then
+extraction. Supported extensions are .pdf, .png, .jpg, .jpeg and .webp, up to 20 MB.
+The status line shows OCR followed by extraction; detailed page-completion logs
+remain in the terminal. The extracted text appears in the source box.
+
+If OCR fails, extraction does not start. If the transcription exceeds 20,000
+characters, the full text remains in the box: shorten it and click Extract & match.
+An existing review draft is replaced only after confirmation and a successful
+new extraction. Uploaded files are temporary and removed after OCR or failure.
+No upload triggers an automatic RDF write. Continue with the usual identity
+confirmation, property review, save preview, confirmation and optional rebuild.
